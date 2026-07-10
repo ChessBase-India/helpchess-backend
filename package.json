@@ -1,0 +1,54 @@
+{
+  "name": "helpchess-backend-template",
+  "version": "1.0.0",
+  "description": "Express + Mongoose API service template",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon",
+    "consumer": "node src/exampleEventsConsumer.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.338.0",
+    "app-module-path": "^2.2.0",
+    "cls-hooked": "^4.2.2",
+    "config": "^4.1.1",
+    "cors": "^2.8.5",
+    "cuid": "^3.0.0",
+    "dotenv-safe": "^8.2.0",
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "express-query-boolean": "^2.0.0",
+    "http-graceful-shutdown": "^3.1.13",
+    "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.5.42",
+    "mongoose": "^7.1.1",
+    "sqs-consumer": "^7.1.0",
+    "sqs-producer": "^3.1.1",
+    "verror": "^1.10.1",
+    "winston": "^3.8.2",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.27.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "nodemon": "^2.0.19",
+    "prettier": "^2.8.8"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}

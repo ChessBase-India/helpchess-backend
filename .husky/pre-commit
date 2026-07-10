@@ -1,0 +1,8 @@
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$branch" = "stage" ] || [ "$branch" = "prod" ]; then
+  echo "Direct commits to '$branch' are not allowed."
+  exit 1
+fi
+
+npx lint-staged

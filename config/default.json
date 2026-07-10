@@ -1,0 +1,33 @@
+{
+  "port": "",
+  "logDir": "logs",
+  "timezone": "",
+  "serviceName": "",
+  "headers": {
+    "correlationId": "X-Correlation-Id",
+    "authorization": "Authorization"
+  },
+  "cookies": {
+    "refreshToken": "refresh_token",
+    "internalJwt": "internal_jwt"
+  },
+  "mongoUrl": "",
+  "accessToken": "",
+  "trustProxy": 1,
+  "accessJwtSecret": "",
+  "refreshJwtSecret": "",
+  "accessTokenValidityInSeconds": "60",
+  "internalAccess": {
+    "roles": {
+      "admin": "admin"
+    },
+    "permissions": {
+      "notes": "notes",
+      "viewer": "viewer"
+    }
+  },
+  "exampleQueue": {
+    "url": "",
+    "region": ""
+  }
+}

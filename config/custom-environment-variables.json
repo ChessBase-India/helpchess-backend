@@ -1,0 +1,13 @@
+{
+  "port": "PORT",
+  "serviceName": "SERVICE_NAME",
+  "timezone": "TIMEZONE",
+  "mongoUrl": "MONGO_URL",
+  "accessToken": "ACCESS_TOKEN",
+  "accessJwtSecret": "ACCESS_JWT_SECRET",
+  "refreshJwtSecret": "REFRESH_JWT_SECRET",
+  "exampleQueue": {
+    "url": "EXAMPLE_QUEUE_URL",
+    "region": "EXAMPLE_QUEUE_REGION"
+  }
+}
