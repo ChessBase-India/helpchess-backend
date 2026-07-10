@@ -7,7 +7,9 @@ mongoose
   .connect(config.get('mongoUrl'), {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    autoIndex: true
+    autoIndex: true,
+    // always use this database, regardless of any db name present in the connection string
+    dbName: config.get('dbName')
   })
   .then(() => {
     const entryPoint = require.main ? require.main.filename : 'Unknown entry point';

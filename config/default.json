@@ -12,6 +12,7 @@
     "internalJwt": "internal_jwt"
   },
   "mongoUrl": "",
+  "dbName": "helpchess",
   "accessToken": "",
   "trustProxy": 1,
   "accessJwtSecret": "",
