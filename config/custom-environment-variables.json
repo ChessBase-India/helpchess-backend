@@ -6,6 +6,9 @@
   "accessToken": "ACCESS_TOKEN",
   "accessJwtSecret": "ACCESS_JWT_SECRET",
   "refreshJwtSecret": "REFRESH_JWT_SECRET",
+  "refreshTokenValidityInSeconds": "REFRESH_TOKEN_VALIDITY_IN_SECONDS",
+  "seedAdminEmail": "SEED_ADMIN_EMAIL",
+  "seedAdminPassword": "SEED_ADMIN_PASSWORD",
   "exampleQueue": {
     "url": "EXAMPLE_QUEUE_URL",
     "region": "EXAMPLE_QUEUE_REGION"

@@ -8,6 +8,7 @@
     "authorization": "Authorization"
   },
   "cookies": {
+    "accessToken": "access_token",
     "refreshToken": "refresh_token",
     "internalJwt": "internal_jwt"
   },
@@ -18,13 +19,18 @@
   "accessJwtSecret": "",
   "refreshJwtSecret": "",
   "accessTokenValidityInSeconds": "60",
+  "refreshTokenValidityInSeconds": "604800",
+  "seedAdminEmail": "",
+  "seedAdminPassword": "",
   "internalAccess": {
     "roles": {
       "admin": "admin"
     },
     "permissions": {
       "notes": "notes",
-      "viewer": "viewer"
+      "viewer": "viewer",
+      "usersRead": "users.read",
+      "usersWrite": "users.write"
     }
   },
   "exampleQueue": {

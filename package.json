@@ -6,17 +6,21 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon",
+    "dev:local": "node scripts/startLocal.js",
     "consumer": "node src/exampleEventsConsumer.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "seed": "node scripts/seedRoles.js",
+    "test:local": "node scripts/localApiTest.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.338.0",
     "app-module-path": "^2.2.0",
+    "bcryptjs": "^3.0.3",
     "cls-hooked": "^4.2.2",
     "config": "^4.1.1",
     "cors": "^2.8.5",
@@ -42,6 +46,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "mongodb-memory-server": "^11.2.0",
     "nodemon": "^2.0.19",
     "prettier": "^2.8.8"
   },

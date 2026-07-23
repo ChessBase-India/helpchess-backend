@@ -1,0 +1,61 @@
+const { error } = require('utils/logger');
+const { parseCookie } = require('utils/commonFunctions');
+const { REFRESH_TOKEN_COOKIE, setAuthCookies } = require('utils/tokens');
+const authService = require('services/auth');
+
+module.exports = {
+  login: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      const response = await authService.login({ email, password });
+      if (!response.ok || !response.data) {
+        if (response.unauthorized) {
+          return res.unauthorized({ msg: response.msg });
+        }
+        return res.failure({ msg: response.msg || 'Unable to login' });
+      }
+
+      setAuthCookies({ res, userId: response.data.userId });
+      return res.success({ data: response.data.user });
+    } catch (e) {
+      error(e);
+      return res.failure({ msg: 'Something went wrong!' });
+    }
+  },
+
+  refresh: async (req, res) => {
+    try {
+      const cookieString = req.headers.cookie;
+      const cookies = cookieString ? parseCookie({ cookieString }) : {};
+      const refreshToken = cookies[REFRESH_TOKEN_COOKIE];
+
+      const response = await authService.refresh({ refreshToken });
+      if (!response.ok || !response.data) {
+        if (response.unauthorized) {
+          return res.unauthorized({ msg: response.msg });
+        }
+        return res.failure({ msg: response.msg || 'Unable to refresh token' });
+      }
+
+      setAuthCookies({ res, userId: response.data.userId });
+      return res.success({ data: { userId: response.data.userId } });
+    } catch (e) {
+      error(e);
+      return res.failure({ msg: 'Something went wrong!' });
+    }
+  },
+
+  me: async (req, res) => {
+    try {
+      const response = await authService.getMe({ userId: req.userId });
+      if (!response.ok || !response.data) {
+        return res.failure({ msg: response.msg || 'Unable to fetch profile' });
+      }
+      return res.success({ data: response.data });
+    } catch (e) {
+      error(e);
+      return res.failure({ msg: 'Something went wrong!' });
+    }
+  }
+};

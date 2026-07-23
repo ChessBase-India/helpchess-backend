@@ -4,14 +4,12 @@ const jwt = require('jsonwebtoken');
 
 const { error } = require('utils/logger');
 const { parseCookie } = require('utils/commonFunctions');
+const { ACCESS_TOKEN_COOKIE } = require('utils/tokens');
 const usersModel = require('models/users');
 
-const REFRESH_TOKEN_COOKIE = config.get('cookies.refreshToken');
 const INTERNAL_JWT_COOKIE = config.get('cookies.internalJwt');
 
-// factories for better code reusability
-
-const verifyCookieAuth =
+const verifyAccessCookieAuth =
   (isOptional = false) =>
   async (req, res, next) => {
     try {
@@ -21,17 +19,16 @@ const verifyCookieAuth =
         return isOptional ? next() : res.unauthorized({});
       }
 
-      const { [REFRESH_TOKEN_COOKIE]: refreshToken } = parseCookie({ cookieString });
+      const { [ACCESS_TOKEN_COOKIE]: accessToken } = parseCookie({ cookieString });
 
-      if (!refreshToken) {
+      if (!accessToken) {
         return isOptional ? next() : res.unauthorized({});
       }
 
       try {
-        const data = jwt.verify(refreshToken, config.get('refreshJwtSecret'));
+        const data = jwt.verify(accessToken, config.get('accessJwtSecret'));
 
         req.userId = data.userId;
-        req.refreshToken = refreshToken;
         return next();
       } catch (jwtError) {
         if (isOptional) {
@@ -63,15 +60,15 @@ module.exports = {
   },
 
   /**
-   * User auth via a refresh-token JWT cookie. Sets req.userId.
+   * User auth via an access-token JWT cookie. Sets req.userId.
    */
-  authenticateByCookie: verifyCookieAuth(false),
+  authenticateByCookie: verifyAccessCookieAuth(false),
 
   /**
    * Same as authenticateByCookie, but lets the request through
    * without req.userId when no valid cookie is present.
    */
-  authenticateByCookieOptional: verifyCookieAuth(true),
+  authenticateByCookieOptional: verifyAccessCookieAuth(true),
 
   /**
    * Auth for internal (back-office) users via a separate JWT cookie.
@@ -102,7 +99,7 @@ module.exports = {
 
   /**
    * Middleware to authorize internal API access based on roles/permissions.
-   * Users with 'admin' role bypass all permission checks.
+   * Users with admin role bypass all permission checks.
    * @param {string|string[]} requiredPermissions - Permission or array of permissions required to access the route.
    * @returns {function} Express middleware
    */
@@ -114,23 +111,31 @@ module.exports = {
         return res.unauthorized({ msg: 'User not authenticated' });
       }
 
-      // Single optimized database call to get user with permissions
-      const user = await usersModel.getUserWithPermissions({ userId });
+      const user = await usersModel.getByIdWithRole({ userId });
 
       if (!user) {
         return res.unauthorized({ msg: 'User not found' });
       }
 
-      const userPermissions = user.permissions || [];
+      if (user.status !== 'active') {
+        return res.unauthorized({ msg: 'Account is not active' });
+      }
 
-      // Users with admin role bypass all permission checks
-      if (user.admin) {
+      const role = user.roleId;
+      if (!role) {
+        return res.forbidden({ msg: 'Insufficient permissions' });
+      }
+
+      const userPermissions = role.permissions || [];
+      const isAdmin = role.code === config.get('internalAccess.roles.admin');
+
+      if (isAdmin) {
         req.userPermissions = userPermissions;
         req.isAdmin = true;
+        req.userRole = role;
         return next();
       }
 
-      // Check specific permissions for non-admin users
       const hasPermissions = Array.isArray(requiredPermissions)
         ? requiredPermissions.some((permission) => userPermissions.includes(permission))
         : userPermissions.includes(requiredPermissions);
@@ -141,6 +146,7 @@ module.exports = {
 
       req.userPermissions = userPermissions;
       req.isAdmin = false;
+      req.userRole = role;
       return next();
     } catch (e) {
       error(e);
