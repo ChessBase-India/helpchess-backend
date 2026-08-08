@@ -6,46 +6,42 @@ const { error } = require('utils/logger');
 const usersModel = require('models/users');
 
 const SALT_ROUNDS = 10;
-
-const sanitizeUser = (user) => {
-  if (!user) {
-    return null;
-  }
-  const safeUser = { ...user };
-  delete safeUser.passwordHash;
-  return safeUser;
-};
+const AUTH_FAILED = 'AUTH_FAILED';
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+const authFailure = (msg) => ({ ok: false, msg, code: AUTH_FAILED });
+
 module.exports = {
+  AUTH_FAILED,
+
   login: async ({ email, password }) => {
     try {
       if (!email || !isValidEmail(email)) {
-        return { ok: false, msg: 'Invalid credentials', unauthorized: true };
+        return authFailure('Invalid credentials');
       }
       if (!password || typeof password !== 'string' || password.length === 0) {
-        return { ok: false, msg: 'Invalid credentials', unauthorized: true };
+        return authFailure('Invalid credentials');
       }
 
-      const user = await usersModel.findByEmail({ email });
+      const user = await usersModel.findByEmailForAuth({ email });
       if (!user) {
-        return { ok: false, msg: 'Invalid credentials', unauthorized: true };
+        return authFailure('Invalid credentials');
       }
 
       const passwordMatch = await bcrypt.compare(password, user.passwordHash);
       if (!passwordMatch) {
-        return { ok: false, msg: 'Invalid credentials', unauthorized: true };
+        return authFailure('Invalid credentials');
       }
 
       if (user.status !== 'active') {
-        return { ok: false, msg: 'Account is not active', unauthorized: true };
+        return authFailure('Account is not active');
       }
 
       await usersModel.updateLastLogin({ userId: user._id });
       const userWithRole = await usersModel.getByIdWithRole({ userId: user._id });
 
-      return { ok: true, data: { user: sanitizeUser(userWithRole), userId: user._id.toString() } };
+      return { ok: true, data: { user: userWithRole, userId: user._id.toString() } };
     } catch (e) {
       error(e);
       return { ok: false, msg: 'Something went wrong, we are looking into it!' };
@@ -55,19 +51,19 @@ module.exports = {
   refresh: async ({ refreshToken }) => {
     try {
       if (!refreshToken) {
-        return { ok: false, msg: 'Authentication Failed', unauthorized: true };
+        return authFailure('Authentication Failed');
       }
 
       let decoded;
       try {
         decoded = jwt.verify(refreshToken, config.get('refreshJwtSecret'));
       } catch (jwtError) {
-        return { ok: false, msg: 'Authentication Failed', unauthorized: true };
+        return authFailure('Authentication Failed');
       }
 
       const user = await usersModel.getById({ userId: decoded.userId });
       if (!user || user.status !== 'active') {
-        return { ok: false, msg: 'Authentication Failed', unauthorized: true };
+        return authFailure('Authentication Failed');
       }
 
       return { ok: true, data: { userId: user._id.toString() } };
@@ -83,7 +79,7 @@ module.exports = {
       if (!user) {
         return { ok: false, msg: 'User not found' };
       }
-      return { ok: true, data: sanitizeUser(user) };
+      return { ok: true, data: user };
     } catch (e) {
       error(e);
       return { ok: false, msg: 'Something went wrong, we are looking into it!' };

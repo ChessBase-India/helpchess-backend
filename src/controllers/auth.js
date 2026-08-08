@@ -3,6 +3,13 @@ const { parseCookie } = require('utils/commonFunctions');
 const { REFRESH_TOKEN_COOKIE, setAuthCookies } = require('utils/tokens');
 const authService = require('services/auth');
 
+const respondAuthServiceError = (res, response, fallbackMsg) => {
+  if (response.code === authService.AUTH_FAILED) {
+    return res.unauthorized({ msg: response.msg });
+  }
+  return res.failure({ msg: response.msg || fallbackMsg });
+};
+
 module.exports = {
   login: async (req, res) => {
     try {
@@ -10,10 +17,7 @@ module.exports = {
 
       const response = await authService.login({ email, password });
       if (!response.ok || !response.data) {
-        if (response.unauthorized) {
-          return res.unauthorized({ msg: response.msg });
-        }
-        return res.failure({ msg: response.msg || 'Unable to login' });
+        return respondAuthServiceError(res, response, 'Unable to login');
       }
 
       setAuthCookies({ res, userId: response.data.userId });
@@ -32,10 +36,7 @@ module.exports = {
 
       const response = await authService.refresh({ refreshToken });
       if (!response.ok || !response.data) {
-        if (response.unauthorized) {
-          return res.unauthorized({ msg: response.msg });
-        }
-        return res.failure({ msg: response.msg || 'Unable to refresh token' });
+        return respondAuthServiceError(res, response, 'Unable to refresh token');
       }
 
       setAuthCookies({ res, userId: response.data.userId });

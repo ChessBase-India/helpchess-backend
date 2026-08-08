@@ -1,14 +1,12 @@
 const mongoose = require('mongoose');
 
-const USER_PROJECTION = { passwordHash: 0 };
-
 const usersSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, required: true, select: false },
     roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'roles', required: true },
     status: {
       type: String,
@@ -42,13 +40,18 @@ module.exports = {
   findByEmail: async ({ email }) =>
     UsersModel.findOne({ email: email.toLowerCase(), isDeleted: { $ne: true } }).lean(),
 
+  findByEmailForAuth: async ({ email }) =>
+    UsersModel.findOne({ email: email.toLowerCase(), isDeleted: { $ne: true } })
+      .select('+passwordHash')
+      .lean(),
+
   findOne: async ({ query, projection }) => UsersModel.findOne(query, projection).lean(),
 
   getById: async ({ userId }) =>
-    UsersModel.findOne({ _id: userId, isDeleted: { $ne: true } }, USER_PROJECTION).lean(),
+    UsersModel.findOne({ _id: userId, isDeleted: { $ne: true } }).lean(),
 
   getByIdWithRole: async ({ userId }) =>
-    UsersModel.findOne({ _id: userId, isDeleted: { $ne: true } }, USER_PROJECTION)
+    UsersModel.findOne({ _id: userId, isDeleted: { $ne: true } })
       .populate(ROLE_POPULATE)
       .lean(),
 
@@ -59,7 +62,7 @@ module.exports = {
       filter.status = status;
     }
     const [items, total] = await Promise.all([
-      UsersModel.find(filter, USER_PROJECTION)
+      UsersModel.find(filter)
         .populate(ROLE_POPULATE)
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -96,8 +99,7 @@ module.exports = {
       update.fullName = `${firstName} ${lastName}`.trim();
     }
     return UsersModel.findOneAndUpdate({ _id: userId, isDeleted: { $ne: true } }, update, {
-      new: true,
-      projection: USER_PROJECTION
+      new: true
     })
       .populate(ROLE_POPULATE)
       .lean();
@@ -107,6 +109,6 @@ module.exports = {
     UsersModel.findOneAndUpdate(
       { _id: userId, isDeleted: { $ne: true } },
       { lastLoginAt: new Date() },
-      { new: true, projection: USER_PROJECTION }
+      { new: true }
     ).lean()
 };

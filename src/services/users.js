@@ -3,15 +3,6 @@ const usersModel = require('models/users');
 const rolesModel = require('models/roles');
 const authService = require('services/auth');
 
-const sanitizeUser = (user) => {
-  if (!user) {
-    return null;
-  }
-  const safeUser = { ...user };
-  delete safeUser.passwordHash;
-  return safeUser;
-};
-
 module.exports = {
   getAll: async ({ page = 1, limit = 10, status } = {}) => {
     try {
@@ -53,7 +44,7 @@ module.exports = {
       });
 
       const userWithRole = await usersModel.getByIdWithRole({ userId: user._id });
-      return { ok: true, data: sanitizeUser(userWithRole) };
+      return { ok: true, data: userWithRole };
     } catch (e) {
       error(e);
       if (e.code === 11000) {
@@ -99,7 +90,7 @@ module.exports = {
       if (!user) {
         return { ok: false, msg: 'User not found or unable to update.' };
       }
-      return { ok: true, data: sanitizeUser(user) };
+      return { ok: true, data: user };
     } catch (e) {
       error(e);
       if (e.code === 11000) {
