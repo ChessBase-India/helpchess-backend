@@ -20,7 +20,7 @@ const INTERNAL_ACCESS = config.get('internalAccess');
 const PERMISSIONS = INTERNAL_ACCESS.permissions;
 
 // routes
-router.get('/', (_req, res) => res.send('Hello there!'));
+router.get('/', (_req, res) => res.send('Your move. ♛'));
 
 router.get('/healthz', (_req, res) => res.json({ status: 'success' }));
 
