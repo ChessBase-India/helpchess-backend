@@ -4,6 +4,8 @@ const config = require('config');
 
 // controllers
 const notesController = require('controllers/notes');
+const authController = require('controllers/auth');
+const usersController = require('controllers/users');
 
 // middlewares
 const {
@@ -21,6 +23,28 @@ const PERMISSIONS = INTERNAL_ACCESS.permissions;
 router.get('/', (_req, res) => res.send('Hello there!'));
 
 router.get('/healthz', (_req, res) => res.json({ status: 'success' }));
+
+// auth
+router.post('/v1/login', authController.login);
+router.post('/v1/refresh', authController.refresh);
+router.get('/v1/me', authenticateByCookie, authController.me);
+
+// users
+router
+  .route('/v1/users')
+  .get(authenticateByCookie, authorizeInternalAccess(PERMISSIONS.usersRead), usersController.getAll)
+  .post(
+    authenticateByCookie,
+    authorizeInternalAccess(PERMISSIONS.usersWrite),
+    usersController.create
+  );
+
+router.patch(
+  '/v1/users/:id',
+  authenticateByCookie,
+  authorizeInternalAccess(PERMISSIONS.usersWrite),
+  usersController.patch
+);
 
 // notes - example resource demonstrating the route -> controller -> service -> model pattern
 // and the available auth middlewares. Replace with your own resources.

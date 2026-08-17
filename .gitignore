@@ -28,6 +28,11 @@ node_modules/
 # dotenv environment variables file
 .env
 .env.test
+.env.local
+
+# curl / local API test cookie jars
+cookies.txt
+.test-cookies.txt
 
 # local config overrides
 config/local.json
