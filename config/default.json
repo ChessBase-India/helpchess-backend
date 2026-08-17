@@ -1,6 +1,6 @@
 {
   "port": "",
-  "logDir": "logs",
+  "logDir": "/var/log/cbi",
   "timezone": "",
   "serviceName": "",
   "headers": {
