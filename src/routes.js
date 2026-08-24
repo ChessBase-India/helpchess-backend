@@ -27,6 +27,7 @@ router.get('/healthz', (_req, res) => res.json({ status: 'success' }));
 // auth
 router.post('/v1/login', authController.login);
 router.post('/v1/refresh', authController.refresh);
+router.post('/v1/logout', authenticateByCookieOptional, authController.logout);
 router.get('/v1/me', authenticateByCookie, authController.me);
 
 // users

@@ -1,6 +1,6 @@
 const { error } = require('utils/logger');
 const { parseCookie } = require('utils/commonFunctions');
-const { REFRESH_TOKEN_COOKIE, setAuthCookies } = require('utils/tokens');
+const { REFRESH_TOKEN_COOKIE, setAuthCookies, clearAuthCookies } = require('utils/tokens');
 const authService = require('services/auth');
 
 const respondAuthServiceError = (res, response, fallbackMsg) => {
@@ -41,6 +41,16 @@ module.exports = {
 
       setAuthCookies({ res, userId: response.data.userId });
       return res.success({ data: { userId: response.data.userId } });
+    } catch (e) {
+      error(e);
+      return res.failure({ msg: 'Something went wrong!' });
+    }
+  },
+
+  logout: async (req, res) => {
+    try {
+      clearAuthCookies({ res });
+      return res.success({});
     } catch (e) {
       error(e);
       return res.failure({ msg: 'Something went wrong!' });
