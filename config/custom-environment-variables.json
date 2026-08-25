@@ -2,6 +2,9 @@
   "port": "PORT",
   "serviceName": "SERVICE_NAME",
   "timezone": "TIMEZONE",
+  "cookies": {
+    "domain": "COOKIE_DOMAIN"
+  },
   "mongoUrl": "MONGO_URL",
   "accessToken": "ACCESS_TOKEN",
   "accessJwtSecret": "ACCESS_JWT_SECRET",

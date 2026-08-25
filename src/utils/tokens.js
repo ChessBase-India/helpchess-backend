@@ -7,11 +7,14 @@ const ACCESS_TOKEN_TTL = parseInt(config.get('accessTokenValidityInSeconds'), 10
 const REFRESH_TOKEN_TTL = parseInt(config.get('refreshTokenValidityInSeconds'), 10);
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+const COOKIE_DOMAIN = (config.has('cookies.domain') && config.get('cookies.domain')) || undefined;
+
 const cookieOptions = (maxAgeSeconds) => ({
   httpOnly: true,
   secure: IS_PRODUCTION,
   sameSite: 'lax',
-  maxAge: maxAgeSeconds * 1000
+  maxAge: maxAgeSeconds * 1000,
+  ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN })
 });
 
 const signAccessToken = ({ userId }) =>
@@ -29,8 +32,14 @@ const setAuthCookies = ({ res, userId }) => {
 };
 
 const clearAuthCookies = ({ res }) => {
-  res.clearCookie(ACCESS_TOKEN_COOKIE, { httpOnly: true, secure: IS_PRODUCTION, sameSite: 'lax' });
-  res.clearCookie(REFRESH_TOKEN_COOKIE, { httpOnly: true, secure: IS_PRODUCTION, sameSite: 'lax' });
+  const options = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'lax',
+    ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN })
+  };
+  res.clearCookie(ACCESS_TOKEN_COOKIE, options);
+  res.clearCookie(REFRESH_TOKEN_COOKIE, options);
 };
 
 module.exports = {
