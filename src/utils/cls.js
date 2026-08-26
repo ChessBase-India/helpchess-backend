@@ -1,4 +1,4 @@
-require('dotenv-safe').config();
+require('dotenv-safe').config({ allowEmptyValues: true });
 const clsHooked = require('cls-hooked');
 const config = require('config');
 

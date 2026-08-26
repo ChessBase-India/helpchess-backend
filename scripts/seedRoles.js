@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-require('dotenv-safe').config();
+require('dotenv-safe').config({ allowEmptyValues: true });
 require('app-module-path').addPath(require('path').resolve(__dirname, '../src'));
 require('models/db');
 

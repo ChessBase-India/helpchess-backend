@@ -10,7 +10,8 @@
   "cookies": {
     "accessToken": "access_token",
     "refreshToken": "refresh_token",
-    "internalJwt": "internal_jwt"
+    "internalJwt": "internal_jwt",
+    "domain": ""
   },
   "mongoUrl": "",
   "dbName": "helpchess",

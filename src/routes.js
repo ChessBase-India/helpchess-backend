@@ -6,6 +6,7 @@ const config = require('config');
 const notesController = require('controllers/notes');
 const authController = require('controllers/auth');
 const usersController = require('controllers/users');
+const rolesController = require('controllers/roles');
 
 // middlewares
 const {
@@ -29,6 +30,14 @@ router.post('/v1/login', authController.login);
 router.post('/v1/refresh', authController.refresh);
 router.post('/v1/logout', authenticateByCookieOptional, authController.logout);
 router.get('/v1/me', authenticateByCookie, authController.me);
+
+// roles
+router.get(
+  '/v1/roles',
+  authenticateByCookie,
+  authorizeInternalAccess(PERMISSIONS.usersRead),
+  rolesController.getAll
+);
 
 // users
 router

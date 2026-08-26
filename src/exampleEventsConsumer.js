@@ -1,6 +1,6 @@
 require('app-module-path').addPath(require('path').resolve(__dirname));
 require('models/db');
-require('dotenv-safe').config();
+require('dotenv-safe').config({ allowEmptyValues: true });
 
 const { Consumer } = require('sqs-consumer');
 const { SQSClient } = require('@aws-sdk/client-sqs');

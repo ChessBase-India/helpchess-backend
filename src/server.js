@@ -1,5 +1,5 @@
 require('app-module-path').addPath(require('path').resolve(__dirname));
-require('dotenv-safe').config();
+require('dotenv-safe').config({ allowEmptyValues: true });
 require('express-async-errors');
 require('models/db');
 

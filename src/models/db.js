@@ -1,4 +1,4 @@
-require('dotenv-safe').config();
+require('dotenv-safe').config({ allowEmptyValues: true });
 const mongoose = require('mongoose');
 const config = require('config');
 const logger = require('utils/logger');

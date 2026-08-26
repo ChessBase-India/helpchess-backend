@@ -21,9 +21,12 @@ module.exports = {
 
   getById: async ({ roleId }) => RolesModel.findOne({ _id: roleId }).lean(),
 
-  getAll: async ({ page = 1, limit = 10 } = {}) => {
+  getAll: async ({ page = 1, limit = 50, status } = {}) => {
     const skip = (page - 1) * limit;
     const filter = {};
+    if (status) {
+      filter.status = status;
+    }
     const [items, total] = await Promise.all([
       RolesModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       RolesModel.countDocuments(filter)
