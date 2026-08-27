@@ -9,13 +9,26 @@ const isDuplicateUtr = (e) =>
   e.code === 11000 &&
   (e.keyPattern?.utrNumber || (e.message && e.message.includes('utrNumber')));
 
+const isAllowedCurrency = (value) =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (typeof value === 'string' && value.trim().toUpperCase() === 'INR');
+
 module.exports = {
   createManual: async ({ donationInput, createdBy }) => {
     try {
       const { donorId, donor, amount, currency, utrNumber, donationDate, address, notes } =
         donationInput;
 
-      const sanitizedDonation = sanitizeDonationFields({ utrNumber, address, notes, currency });
+      if (!Number.isFinite(amount) || amount < 1) {
+        return { ok: false, msg: 'Invalid/Missing amount', invalid: true };
+      }
+      if (!isAllowedCurrency(currency)) {
+        return { ok: false, msg: 'Invalid currency', invalid: true };
+      }
+
+      const sanitizedDonation = sanitizeDonationFields({ utrNumber, address, notes });
       if (!sanitizedDonation.utrNumber) {
         return { ok: false, msg: 'Invalid/Missing utrNumber' };
       }
@@ -56,7 +69,7 @@ module.exports = {
       const donationData = {
         donorId: resolvedDonor._id,
         amount,
-        currency: sanitizedDonation.currency || 'INR',
+        currency: 'INR',
         utrNumber: sanitizedDonation.utrNumber,
         createdBy,
         address: snapshotAddress,
@@ -72,14 +85,23 @@ module.exports = {
       }
 
       if (sanitizedDonation.address && sanitizedDonation.address !== resolvedDonor.address) {
-        await donorsModel.patch({
-          id: resolvedDonor._id,
-          updateData: { address: sanitizedDonation.address }
-        });
+        try {
+          await donorsModel.patch({
+            id: resolvedDonor._id,
+            updateData: { address: sanitizedDonation.address }
+          });
+        } catch (addressError) {
+          error(addressError);
+        }
       }
 
-      const populated = await donationsModel.populateDonor({ donation });
-      return { ok: true, data: populated };
+      try {
+        const populated = await donationsModel.populateDonor({ donation });
+        return { ok: true, data: populated || donation };
+      } catch (populateError) {
+        error(populateError);
+        return { ok: true, data: donation };
+      }
     } catch (e) {
       error(e);
       if (isDuplicateUtr(e)) {
@@ -156,7 +178,11 @@ module.exports = {
 
       if (sanitized.address && sanitized.address !== existing.donorId?.address) {
         const donorId = existing.donorId?._id || existing.donorId;
-        await donorsModel.patch({ id: donorId, updateData: { address: sanitized.address } });
+        try {
+          await donorsModel.patch({ id: donorId, updateData: { address: sanitized.address } });
+        } catch (addressError) {
+          error(addressError);
+        }
       }
 
       return { ok: true, data: donation };

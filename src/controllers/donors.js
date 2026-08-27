@@ -4,9 +4,21 @@ const { error } = require('utils/logger');
 const donorsService = require('services/donors');
 const authService = require('services/auth');
 
-const parsePositiveInt = (value) => {
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? NaN : parsed;
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 100;
+
+const parseStrictPositiveInt = (value) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    return NaN;
+  }
+  return Number(value);
 };
 
 module.exports = {
@@ -14,20 +26,30 @@ module.exports = {
     try {
       const { q, page, limit } = req.query;
 
-      if (page && (Number.isNaN(Number(page)) || Number(page) <= 0)) {
-        return res.invalid({ msg: 'Invalid page' });
+      let parsedPage = DEFAULT_PAGE;
+      if (page !== undefined && page !== null) {
+        parsedPage = parseStrictPositiveInt(page);
+        if (!Number.isInteger(parsedPage) || parsedPage <= 0) {
+          return res.invalid({ msg: 'Invalid page' });
+        }
       }
-      if (limit && (Number.isNaN(Number(limit)) || Number(limit) <= 0 || Number(limit) > 100)) {
-        return res.invalid({ msg: 'Invalid limit' });
+
+      let parsedLimit = DEFAULT_LIMIT;
+      if (limit !== undefined && limit !== null) {
+        parsedLimit = parseStrictPositiveInt(limit);
+        if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > MAX_LIMIT) {
+          return res.invalid({ msg: 'Invalid limit' });
+        }
       }
+
       if (q !== undefined && typeof q !== 'string') {
         return res.invalid({ msg: 'Invalid q' });
       }
 
       const response = await donorsService.search({
         q,
-        page: page ? parsePositiveInt(page) : undefined,
-        limit: limit ? parsePositiveInt(limit) : undefined
+        page: parsedPage,
+        limit: parsedLimit
       });
       if (!response.ok || !response.data) {
         return res.failure({ msg: 'Unable to fetch donors!' });

@@ -28,6 +28,34 @@ const emptyToUndefined = (value) => {
   return value;
 };
 
+const sanitizeEmail = (value) => {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length <= FIELD_LIMITS.email) {
+    return trimmed;
+  }
+
+  const at = trimmed.lastIndexOf('@');
+  if (at <= 0) {
+    return trimmed.slice(0, FIELD_LIMITS.email).trim();
+  }
+
+  const domain = trimmed.slice(at);
+  const local = trimmed.slice(0, at);
+  const maxLocal = FIELD_LIMITS.email - domain.length;
+  if (maxLocal < 1) {
+    return trimmed;
+  }
+
+  return `${local.slice(0, maxLocal)}${domain}`;
+};
+
 const sanitizeDonorFields = (input = {}) => {
   const donorData = {};
 
@@ -35,7 +63,7 @@ const sanitizeDonorFields = (input = {}) => {
     donorData.name = sanitizeString(input.name, FIELD_LIMITS.name);
   }
   if (input.email !== undefined) {
-    donorData.email = sanitizeString(input.email, FIELD_LIMITS.email);
+    donorData.email = sanitizeEmail(input.email);
   }
   if (input.phone !== undefined) {
     donorData.phone = emptyToUndefined(sanitizeString(input.phone, FIELD_LIMITS.phone));
@@ -65,9 +93,6 @@ const sanitizeDonationFields = (input = {}) => {
   if (input.notes !== undefined) {
     donationData.notes = emptyToUndefined(sanitizeString(input.notes, FIELD_LIMITS.notes));
   }
-  if (input.currency !== undefined && typeof input.currency === 'string') {
-    donationData.currency = sanitizeString(input.currency, 3).toUpperCase();
-  }
 
   return donationData;
 };
@@ -75,6 +100,7 @@ const sanitizeDonationFields = (input = {}) => {
 module.exports = {
   FIELD_LIMITS,
   sanitizeString,
+  sanitizeEmail,
   emptyToUndefined,
   sanitizeDonorFields,
   sanitizeDonationFields

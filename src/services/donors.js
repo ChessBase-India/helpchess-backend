@@ -2,6 +2,17 @@ const { error } = require('utils/logger');
 const donorsModel = require('models/donors');
 const donationsModel = require('models/donations');
 const { sanitizeDonorFields } = require('utils/sanitize');
+const authService = require('services/auth');
+
+const resolveEmail = ({ original, sanitized }) => {
+  if (sanitized && authService.isValidEmail(sanitized)) {
+    return sanitized;
+  }
+  if (original && typeof original === 'string' && authService.isValidEmail(original.trim())) {
+    return original.trim();
+  }
+  return null;
+};
 
 module.exports = {
   search: async ({ q, page = 1, limit = 10 } = {}) => {
@@ -38,9 +49,12 @@ module.exports = {
       if (!sanitized.name) {
         return { ok: false, msg: 'Invalid/Missing name' };
       }
-      if (!sanitized.email) {
+
+      const email = resolveEmail({ original: donorData.email, sanitized: sanitized.email });
+      if (!email) {
         return { ok: false, msg: 'Invalid/Missing email' };
       }
+      sanitized.email = email;
 
       const donor = await donorsModel.create({ donorData: sanitized });
       if (!donor) {
@@ -67,8 +81,12 @@ module.exports = {
       if (sanitized.name !== undefined && !sanitized.name) {
         return { ok: false, msg: 'Invalid name' };
       }
-      if (sanitized.email !== undefined && !sanitized.email) {
-        return { ok: false, msg: 'Invalid email' };
+      if (updateData.email !== undefined) {
+        const email = resolveEmail({ original: updateData.email, sanitized: sanitized.email });
+        if (!email) {
+          return { ok: false, msg: 'Invalid email' };
+        }
+        sanitized.email = email;
       }
 
       const donor = await donorsModel.patch({ id, updateData: sanitized });

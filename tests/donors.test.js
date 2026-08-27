@@ -1,5 +1,6 @@
 const config = require('config');
 
+const donationsModel = require('models/donations');
 const {
   startTestApp,
   stopTestApp,
@@ -13,6 +14,7 @@ const PERMISSIONS = config.get('internalAccess.permissions');
 
 describe('donors API', () => {
   let cookie;
+  let user;
 
   beforeAll(async () => {
     await startTestApp();
@@ -24,7 +26,7 @@ describe('donors API', () => {
 
   beforeEach(async () => {
     await clearDb();
-    ({ cookie } = await createAuthedUser({
+    ({ cookie, user } = await createAuthedUser({
       permissions: [PERMISSIONS.donorsRead, PERMISSIONS.donorsWrite]
     }));
   });
@@ -71,6 +73,19 @@ describe('donors API', () => {
     expect(res.body.data).not.toHaveProperty('taxExemptionEligible');
     expect(res.body.data).not.toHaveProperty('totalDonationsCount');
     expect(res.body.data).not.toHaveProperty('totalDonatedAmount');
+  });
+
+  it('accepts an oversized email without 400 and stores a valid truncated address', async () => {
+    const longEmail = `${'a'.repeat(300)}@example.com`;
+    const res = await createDonor({
+      name: 'Long Email Donor',
+      email: longEmail
+    });
+
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data.email.length).toBeLessThanOrEqual(254);
+    expect(res.body.data.email).toMatch(/^[^\s@]+@example\.com$/);
+    expect(res.body.data.email.includes('@')).toBe(true);
   });
 
   it('requires name and email when creating a donor', async () => {
@@ -126,6 +141,41 @@ describe('donors API', () => {
     expect(paged.body.data.items).toHaveLength(1);
     expect(paged.body.data.total).toBe(3);
     expect(paged.body.data.totalPages).toBe(2);
+
+    const defaults = await request().get('/v1/donors').set('Cookie', cookie);
+    expect(defaults.body.data.page).toBe(1);
+    expect(defaults.body.data.limit).toBe(10);
+  });
+
+  it('rejects non-integer page and limit query params', async () => {
+    const fractional = await request()
+      .get('/v1/donors')
+      .query({ page: '1.5' })
+      .set('Cookie', cookie);
+    expect(fractional.body.ok).toBe(false);
+    expect(fractional.body.err).toMatch(/page/i);
+
+    const leadingZero = await request()
+      .get('/v1/donors')
+      .query({ page: '01' })
+      .set('Cookie', cookie);
+    expect(leadingZero.body.ok).toBe(false);
+    expect(leadingZero.body.err).toMatch(/page/i);
+
+    const emptyPage = await request().get('/v1/donors?page=').set('Cookie', cookie);
+    expect(emptyPage.body.ok).toBe(false);
+    expect(emptyPage.body.err).toMatch(/page/i);
+
+    const overLimit = await request()
+      .get('/v1/donors')
+      .query({ limit: '101' })
+      .set('Cookie', cookie);
+    expect(overLimit.body.ok).toBe(false);
+    expect(overLimit.body.err).toMatch(/limit/i);
+
+    const emptyLimit = await request().get('/v1/donors?limit=').set('Cookie', cookie);
+    expect(emptyLimit.body.ok).toBe(false);
+    expect(emptyLimit.body.err).toMatch(/limit/i);
   });
 
   it('returns donor details with on-demand donation summary', async () => {
@@ -159,6 +209,43 @@ describe('donors API', () => {
     expect(res.body.data.donationSummary).toEqual({
       totalDonationsCount: 2,
       totalDonatedAmount: 7500
+    });
+  });
+
+  it('aggregates donor totals from captured INR donations only', async () => {
+    const created = await createDonor({
+      name: 'Inr Only',
+      email: 'inr-only@example.com'
+    });
+    const donorId = created.body.data._id;
+
+    await donationsModel.ManualBankDonation.create({
+      donorId,
+      amount: 100,
+      currency: 'INR',
+      utrNumber: 'INRONLY001',
+      createdBy: user._id
+    });
+    await donationsModel.ManualBankDonation.create({
+      donorId,
+      amount: 50,
+      currency: 'USD',
+      utrNumber: 'USDNOT001',
+      createdBy: user._id
+    });
+    await donationsModel.ManualBankDonation.create({
+      donorId,
+      amount: 25,
+      currency: 'INR',
+      status: 'refunded',
+      utrNumber: 'INRREFUND001',
+      createdBy: user._id
+    });
+
+    const res = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(res.body.data.donationSummary).toEqual({
+      totalDonationsCount: 1,
+      totalDonatedAmount: 100
     });
   });
 

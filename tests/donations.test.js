@@ -114,6 +114,95 @@ describe('manual donations API', () => {
     expect(duplicate.body.data).toBeNull();
   });
 
+  it('rejects non-finite amounts', async () => {
+    const donorRes = await createDonor({
+      name: 'Amount Donor',
+      email: 'amount@example.com'
+    });
+    const donorId = donorRes.body.data._id;
+
+    const infinity = await createManual({
+      donorId,
+      amount: 'Infinity',
+      utrNumber: 'AMTINF001'
+    });
+    expect(infinity.body.ok).toBe(false);
+    expect(infinity.body.err).toMatch(/amount/i);
+
+    const negativeInfinity = await createManual({
+      donorId,
+      amount: '-Infinity',
+      utrNumber: 'AMTNEGINF001'
+    });
+    expect(negativeInfinity.body.ok).toBe(false);
+    expect(negativeInfinity.body.err).toMatch(/amount/i);
+
+    const notANumber = await createManual({
+      donorId,
+      amount: 'NaN',
+      utrNumber: 'AMTNAN001'
+    });
+    expect(notANumber.body.ok).toBe(false);
+    expect(notANumber.body.err).toMatch(/amount/i);
+  });
+
+  it('rejects non-INR currencies on create and patch', async () => {
+    const created = await createManual({
+      donor: { name: 'Inr Donor', email: 'inr-currency@example.com' },
+      amount: 1000,
+      currency: 'INR',
+      utrNumber: 'INRCURR001'
+    });
+    expect(created.body.ok).toBe(true);
+    expect(created.body.data.currency).toBe('INR');
+
+    const usd = await createManual({
+      donor: { name: 'Usd Donor', email: 'usd-currency@example.com' },
+      amount: 1000,
+      currency: 'USD',
+      utrNumber: 'USDCURR001'
+    });
+    expect(usd.body.ok).toBe(false);
+    expect(usd.body.err).toMatch(/currency/i);
+
+    const patched = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ currency: 'USD', notes: 'try usd' });
+    expect(patched.body.ok).toBe(false);
+    expect(patched.body.err).toMatch(/currency/i);
+  });
+
+  it('returns the created donation when donor address sync fails', async () => {
+    const donorRes = await createDonor({
+      name: 'Sync Fail Donor',
+      email: 'sync-fail@example.com',
+      address: 'Old Street'
+    });
+    const donorId = donorRes.body.data._id;
+    const patchSpy = jest
+      .spyOn(donorsModel, 'patch')
+      .mockRejectedValueOnce(new Error('sync failed'));
+
+    try {
+      const res = await createManual({
+        donorId,
+        amount: 1500,
+        utrNumber: 'BESTEFFORTUTR1',
+        address: 'New Street'
+      });
+
+      expect(res.body.ok).toBe(true);
+      expect(res.body.data.address).toBe('New Street');
+      expect(res.body.data.utrNumber).toBe('BESTEFFORTUTR1');
+
+      const donor = await donorsModel.getById({ id: donorId });
+      expect(donor.address).toBe('Old Street');
+    } finally {
+      patchSpy.mockRestore();
+    }
+  });
+
   it('fetches and patches a manual donation', async () => {
     const created = await createManual({
       donor: { name: 'Patch Me', email: 'patch@example.com', address: 'A' },

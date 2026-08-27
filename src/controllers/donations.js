@@ -9,6 +9,15 @@ const isValidDate = (value) => {
   return !Number.isNaN(date.getTime());
 };
 
+const isInr = (value) => typeof value === 'string' && value.trim().toUpperCase() === 'INR';
+
+const parseFiniteAmount = (amount) => {
+  if (typeof amount !== 'number' && typeof amount !== 'string') {
+    return NaN;
+  }
+  return Number(amount);
+};
+
 module.exports = {
   createManual: async (req, res) => {
     try {
@@ -34,22 +43,22 @@ module.exports = {
         }
       }
 
+      const parsedAmount = parseFiniteAmount(amount);
       if (
         amount === undefined ||
         amount === null ||
-        Number.isNaN(Number(amount)) ||
-        Number(amount) < 1
+        !Number.isFinite(parsedAmount) ||
+        parsedAmount < 1
       ) {
         return res.invalid({ msg: 'Invalid/Missing amount' });
       }
       if (!utrNumber || typeof utrNumber !== 'string' || utrNumber.trim().length === 0) {
         return res.invalid({ msg: 'Invalid/Missing utrNumber' });
       }
-      if (
-        currency !== undefined &&
-        (typeof currency !== 'string' || currency.trim().length === 0)
-      ) {
-        return res.invalid({ msg: 'Invalid currency' });
+      if (currency !== undefined && currency !== null && currency !== '') {
+        if (!isInr(currency)) {
+          return res.invalid({ msg: 'Invalid currency' });
+        }
       }
       if (donationDate !== undefined && !isValidDate(donationDate)) {
         return res.invalid({ msg: 'Invalid donationDate' });
@@ -65,8 +74,8 @@ module.exports = {
         donationInput: {
           donorId: donorId || undefined,
           donor,
-          amount: Number(amount),
-          currency,
+          amount: parsedAmount,
+          currency: currency ? 'INR' : undefined,
           utrNumber,
           donationDate,
           address,
@@ -75,7 +84,7 @@ module.exports = {
         createdBy: req.userId
       });
       if (!response.ok || !response.data) {
-        if (response.duplicate) {
+        if (response.duplicate || response.invalid) {
           return res.invalid({ msg: response.msg });
         }
         return res.failure({ msg: response.msg || 'Unable to create donation!' });
@@ -108,10 +117,16 @@ module.exports = {
   patch: async (req, res) => {
     try {
       const { id } = req.params;
-      const { utrNumber, donationDate, address, notes } = req.body;
+      const { utrNumber, donationDate, address, notes, currency } = req.body;
 
       if (!id || !isValidObjectId(id)) {
         return res.invalid({ msg: 'Invalid/Missing donation id' });
+      }
+
+      if (currency !== undefined && currency !== null && currency !== '') {
+        if (!isInr(currency)) {
+          return res.invalid({ msg: 'Invalid currency' });
+        }
       }
 
       const updateData = {};

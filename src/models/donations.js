@@ -91,7 +91,8 @@ module.exports = {
       {
         $match: {
           donorId: toObjectId(donorId),
-          status: 'captured'
+          status: 'captured',
+          currency: 'INR'
         }
       },
       {
