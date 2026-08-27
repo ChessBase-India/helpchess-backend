@@ -15,6 +15,7 @@ const startTestApp = async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri(), { dbName: 'helpchess-test' });
   await Promise.all([
+    donationsModel.Donation.init(),
     donationsModel.ManualBankDonation.init(),
     donationsModel.RazorpayWebhookDonation.init(),
     donationsModel.RazorpaySyncDonation.init()

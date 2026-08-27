@@ -169,4 +169,38 @@ describe('manual donations API', () => {
     expect(webhook.collection.collectionName).toBe('donations');
     expect(sync.collection.collectionName).toBe('donations');
   });
+
+  it('enforces a collection-wide unique sparse index on razorpayPaymentId', async () => {
+    const indexes = await donationsModel.Donation.collection.indexes();
+    const paymentIdIndex = indexes.find((index) => index.key && index.key.razorpayPaymentId === 1);
+
+    expect(paymentIdIndex).toBeDefined();
+    expect(paymentIdIndex.unique).toBe(true);
+    expect(paymentIdIndex.sparse).toBe(true);
+    expect(paymentIdIndex.partialFilterExpression).toBeUndefined();
+
+    const webhookPaymentId =
+      donationsModel.RazorpayWebhookDonation.schema.path('razorpayPaymentId');
+    const syncPaymentId = donationsModel.RazorpaySyncDonation.schema.path('razorpayPaymentId');
+    expect(webhookPaymentId.options.unique).toBeFalsy();
+    expect(syncPaymentId.options.unique).toBeFalsy();
+
+    const donor = await donorsModel.create({
+      donorData: { name: 'Dup Pay Donor', email: 'dup-pay@example.com' }
+    });
+
+    await donationsModel.RazorpayWebhookDonation.create({
+      donorId: donor._id,
+      amount: 1500,
+      razorpayPaymentId: 'pay_shared_1'
+    });
+
+    await expect(
+      donationsModel.RazorpaySyncDonation.create({
+        donorId: donor._id,
+        amount: 1500,
+        razorpayPaymentId: 'pay_shared_1'
+      })
+    ).rejects.toMatchObject({ code: 11000 });
+  });
 });

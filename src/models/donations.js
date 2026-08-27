@@ -26,6 +26,12 @@ const baseDonationSchema = new mongoose.Schema(
   }
 );
 
+// Collection-wide unique index. Discriminator `unique: true` is per-type
+// (partial on `source`), which would allow the same razorpayPaymentId on
+// both razorpay_webhook and razorpay_sync. Sparse so manual_bank rows
+// without a payment id are not indexed.
+baseDonationSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
+
 const Donation = mongoose.model('donations', baseDonationSchema);
 
 const manualBankSchema = new mongoose.Schema({
@@ -37,14 +43,7 @@ manualBankSchema.index({ utrNumber: 1 }, { unique: true, sparse: true });
 const ManualBankDonation = Donation.discriminator('manual_bank', manualBankSchema);
 
 const razorpayWebhookSchema = new mongoose.Schema({
-  razorpayPaymentId: {
-    type: String,
-    required: true,
-    trim: true,
-    index: true,
-    unique: true,
-    sparse: true
-  },
+  razorpayPaymentId: { type: String, required: true, trim: true },
   razorpayOrderId: { type: String, trim: true },
   razorpayFee: { type: Number },
   razorpayTax: { type: Number },
@@ -54,14 +53,7 @@ const razorpayWebhookSchema = new mongoose.Schema({
 const RazorpayWebhookDonation = Donation.discriminator('razorpay_webhook', razorpayWebhookSchema);
 
 const razorpaySyncSchema = new mongoose.Schema({
-  razorpayPaymentId: {
-    type: String,
-    required: true,
-    trim: true,
-    index: true,
-    unique: true,
-    sparse: true
-  },
+  razorpayPaymentId: { type: String, required: true, trim: true },
   razorpayOrderId: { type: String, trim: true },
   razorpayFee: { type: Number },
   razorpayTax: { type: Number },
