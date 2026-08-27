@@ -95,28 +95,51 @@ describe('manual donations API', () => {
     expect(res.body.data.utrNumber).toBe('HDFC999888777');
   });
 
-  it('deletes an inline donor when donation persist fails after the donor was created', async () => {
-    const duplicateUtrError = new Error('E11000 duplicate key error');
-    duplicateUtrError.code = 11000;
-    duplicateUtrError.keyPattern = { utrNumber: 1 };
-    const saveSpy = jest
-      .spyOn(donationsModel, 'createManualBank')
-      .mockRejectedValueOnce(duplicateUtrError);
+  it('deletes only the inline donor by _id when donation save hits a duplicate UTR', async () => {
+    const existingRes = await createDonor({
+      name: 'Preexisting Same Email',
+      email: 'shared-email@example.com'
+    });
+    const preexistingId = existingRes.body.data._id;
+
+    const first = await createManual({
+      donor: { name: 'Utr Holder', email: 'utr-holder@example.com' },
+      amount: 1000,
+      utrNumber: 'RACEUTR001'
+    });
+    expect(first.body.ok).toBe(true);
+    const firstDonationId = first.body.data._id;
+
+    const createSpy = jest.spyOn(donorsModel, 'create');
+    const findSpy = jest.spyOn(donationsModel, 'findByUtrNumber').mockResolvedValueOnce(null);
 
     try {
       const res = await createManual({
-        donor: { name: 'Orphan Inline', email: 'orphan-inline@example.com' },
-        amount: 1000,
-        utrNumber: 'ORPHANUTR001'
+        donor: { name: 'Inline Same Email', email: 'shared-email@example.com' },
+        amount: 2000,
+        utrNumber: 'RACEUTR001'
       });
 
       expect(res.body.ok).toBe(false);
       expect(res.body.err).toMatch(/UTR/i);
 
-      const leftover = await donorsModel.search({ q: 'orphan-inline@example.com' });
-      expect(leftover.items).toHaveLength(0);
+      const createdDonor = await createSpy.mock.results[0].value;
+      const inlineDonorId = createdDonor._id;
+      expect(inlineDonorId.toString()).not.toBe(preexistingId.toString());
+      expect(await donorsModel.getById({ id: inlineDonorId })).toBeNull();
+
+      const preexisting = await donorsModel.getById({ id: preexistingId });
+      expect(preexisting).not.toBeNull();
+      expect(preexisting.email).toBe('shared-email@example.com');
+      expect(preexisting.name).toBe('Preexisting Same Email');
+
+      findSpy.mockRestore();
+      const utrDonation = await donationsModel.findByUtrNumber({ utrNumber: 'RACEUTR001' });
+      expect(utrDonation).not.toBeNull();
+      expect(utrDonation._id.toString()).toBe(firstDonationId);
     } finally {
-      saveSpy.mockRestore();
+      createSpy.mockRestore();
+      findSpy.mockRestore();
     }
   });
 

@@ -3,11 +3,23 @@ const { isValidObjectId } = require('mongoose');
 const { error } = require('utils/logger');
 const donorsService = require('services/donors');
 const authService = require('services/auth');
-const { parseStrictPositiveInt } = require('utils/pagination');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
+
+const parseStrictPositiveInt = (value) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    return NaN;
+  }
+  return Number(value);
+};
 
 module.exports = {
   getAll: async (req, res) => {
