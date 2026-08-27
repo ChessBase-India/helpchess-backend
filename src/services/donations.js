@@ -15,8 +15,20 @@ const isAllowedCurrency = (value) =>
   value === '' ||
   (typeof value === 'string' && value.trim().toUpperCase() === 'INR');
 
+const cleanupInlineDonor = async (donorId) => {
+  if (!donorId) {
+    return;
+  }
+  try {
+    await donorsModel.deleteById({ id: donorId });
+  } catch (cleanupError) {
+    error(cleanupError);
+  }
+};
+
 module.exports = {
   createManual: async ({ donationInput, createdBy }) => {
+    let createdInlineDonorId;
     try {
       const { donorId, donor, amount, currency, utrNumber, donationDate, address, notes } =
         donationInput;
@@ -56,6 +68,7 @@ module.exports = {
           return createdDonor;
         }
         resolvedDonor = createdDonor.data;
+        createdInlineDonorId = resolvedDonor._id;
       } else {
         return { ok: false, msg: 'Either donorId or donor is required' };
       }
@@ -81,6 +94,7 @@ module.exports = {
 
       const donation = await donationsModel.createManualBank({ donationData });
       if (!donation) {
+        await cleanupInlineDonor(createdInlineDonorId);
         return { ok: false, msg: 'Unable to create donation!' };
       }
 
@@ -103,6 +117,7 @@ module.exports = {
         return { ok: true, data: donation };
       }
     } catch (e) {
+      await cleanupInlineDonor(createdInlineDonorId);
       error(e);
       if (isDuplicateUtr(e)) {
         return {

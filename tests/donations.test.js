@@ -95,6 +95,63 @@ describe('manual donations API', () => {
     expect(res.body.data.utrNumber).toBe('HDFC999888777');
   });
 
+  it('deletes an inline donor when donation persist fails after the donor was created', async () => {
+    const duplicateUtrError = new Error('E11000 duplicate key error');
+    duplicateUtrError.code = 11000;
+    duplicateUtrError.keyPattern = { utrNumber: 1 };
+    const saveSpy = jest
+      .spyOn(donationsModel, 'createManualBank')
+      .mockRejectedValueOnce(duplicateUtrError);
+
+    try {
+      const res = await createManual({
+        donor: { name: 'Orphan Inline', email: 'orphan-inline@example.com' },
+        amount: 1000,
+        utrNumber: 'ORPHANUTR001'
+      });
+
+      expect(res.body.ok).toBe(false);
+      expect(res.body.err).toMatch(/UTR/i);
+
+      const leftover = await donorsModel.search({ q: 'orphan-inline@example.com' });
+      expect(leftover.items).toHaveLength(0);
+    } finally {
+      saveSpy.mockRestore();
+    }
+  });
+
+  it('does not delete an existing donor when donation persist fails', async () => {
+    const donorRes = await createDonor({
+      name: 'Keep Me',
+      email: 'keep-me@example.com'
+    });
+    const donorId = donorRes.body.data._id;
+
+    const duplicateUtrError = new Error('E11000 duplicate key error');
+    duplicateUtrError.code = 11000;
+    duplicateUtrError.keyPattern = { utrNumber: 1 };
+    const saveSpy = jest
+      .spyOn(donationsModel, 'createManualBank')
+      .mockRejectedValueOnce(duplicateUtrError);
+
+    try {
+      const res = await createManual({
+        donorId,
+        amount: 1000,
+        utrNumber: 'KEEPMEUTR001'
+      });
+
+      expect(res.body.ok).toBe(false);
+      expect(res.body.err).toMatch(/UTR/i);
+
+      const donor = await donorsModel.getById({ id: donorId });
+      expect(donor).not.toBeNull();
+      expect(donor.email).toBe('keep-me@example.com');
+    } finally {
+      saveSpy.mockRestore();
+    }
+  });
+
   it('rejects a duplicate UTR on manual donations', async () => {
     const first = await createManual({
       donor: { name: 'First', email: 'first@example.com' },

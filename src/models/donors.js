@@ -48,5 +48,7 @@ module.exports = {
   create: async ({ donorData }) => new DonorsModel(donorData).save(),
 
   patch: async ({ id, updateData }) =>
-    DonorsModel.findByIdAndUpdate(id, updateData, { new: true }).lean()
+    DonorsModel.findByIdAndUpdate(id, updateData, { new: true }).lean(),
+
+  deleteById: async ({ id }) => DonorsModel.findByIdAndDelete(id)
 };
