@@ -146,7 +146,7 @@ module.exports = {
 
       const response = await donationsService.patch({ id, updateData });
       if (!response.ok || !response.data) {
-        if (response.duplicate) {
+        if (response.duplicate || response.invalid) {
           return res.invalid({ msg: response.msg });
         }
         return res.failure({ msg: response.msg || 'Unable to update donation!' });

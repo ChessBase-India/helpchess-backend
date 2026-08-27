@@ -184,7 +184,9 @@ describe('manual donations API', () => {
     const syncPaymentId = donationsModel.RazorpaySyncDonation.schema.path('razorpayPaymentId');
     expect(webhookPaymentId.options.unique).toBeFalsy();
     expect(syncPaymentId.options.unique).toBeFalsy();
+  });
 
+  it('fails with Mongo duplicate key 11000 when webhook and sync share the same razorpayPaymentId', async () => {
     const donor = await donorsModel.create({
       donorData: { name: 'Dup Pay Donor', email: 'dup-pay@example.com' }
     });
@@ -202,5 +204,28 @@ describe('manual donations API', () => {
         razorpayPaymentId: 'pay_shared_1'
       })
     ).rejects.toMatchObject({ code: 11000 });
+  });
+
+  it('rejects PATCH /v1/donations/:id on a razorpay webhook or sync row with a client error', async () => {
+    const donor = await donorsModel.create({
+      donorData: { name: 'Razorpay Patch Donor', email: 'rzp-patch@example.com' }
+    });
+    const webhook = await donationsModel.RazorpayWebhookDonation.create({
+      donorId: donor._id,
+      amount: 2000,
+      razorpayPaymentId: 'pay_patch_blocked_1'
+    });
+
+    const res = await request()
+      .patch(`/v1/donations/${webhook._id}`)
+      .set('Cookie', cookie)
+      .send({ notes: 'should not apply' });
+
+    expect(res.body.ok).toBe(false);
+    expect(res.body.err).toMatch(/manual bank/i);
+    expect(res.body.data).toBeNull();
+
+    const unchanged = await donationsModel.Donation.findById(webhook._id).lean();
+    expect(unchanged.notes).toBeUndefined();
   });
 });
