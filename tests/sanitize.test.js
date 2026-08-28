@@ -29,6 +29,14 @@ describe('sanitize', () => {
     expect(truncated).toMatch(/^[^\s@]+@example\.com$/);
   });
 
+  it('returns invalid when the domain leaves no room for a local part', () => {
+    const email = `a@${'d'.repeat(FIELD_LIMITS.email)}.com`;
+    expect(email.length).toBeGreaterThan(FIELD_LIMITS.email);
+    expect(sanitizeEmail(email)).toBeUndefined();
+    expect(sanitizeEmail(email)).not.toBe(email);
+    expect(sanitizeEmail(email)).not.toBe(email.trim());
+  });
+
   it('trims after slicing as specified', () => {
     expect(sanitizeString(`  hello${' '.repeat(10)}`, 7)).toBe('hello');
   });

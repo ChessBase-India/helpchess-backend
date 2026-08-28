@@ -374,6 +374,112 @@ describe('manual donations API', () => {
     expect(patched.body.data.utrNumber).toBe('PATCHUTR0002');
   });
 
+  it('does not revert a newer donor profile address when patching a donation snapshot', async () => {
+    const donorRes = await createDonor({
+      name: 'Address History',
+      email: 'addr-history@example.com',
+      address: 'Donation Snapshot Street'
+    });
+    const donorId = donorRes.body.data._id;
+
+    const created = await createManual({
+      donorId,
+      amount: 1000,
+      utrNumber: 'ADDRSNAP001',
+      address: 'Donation Snapshot Street'
+    });
+    expect(created.body.ok).toBe(true);
+    expect(created.body.data.address).toBe('Donation Snapshot Street');
+
+    const donorPatched = await request()
+      .patch(`/v1/donors/${donorId}`)
+      .set('Cookie', cookie)
+      .send({ address: 'Newer Profile Street' });
+    expect(donorPatched.body.ok).toBe(true);
+    expect(donorPatched.body.data.address).toBe('Newer Profile Street');
+
+    const patchWithSnapshot = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ address: 'Donation Snapshot Street', notes: 'keep snapshot' });
+    expect(patchWithSnapshot.body.ok).toBe(true);
+    expect(patchWithSnapshot.body.data.address).toBe('Donation Snapshot Street');
+
+    const afterSnapshotPatch = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(afterSnapshotPatch.body.data.address).toBe('Newer Profile Street');
+
+    const patchOmitAddress = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ notes: 'omit address' });
+    expect(patchOmitAddress.body.ok).toBe(true);
+
+    const afterOmit = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(afterOmit.body.data.address).toBe('Newer Profile Street');
+
+    const patchEmpty = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ address: '' });
+    expect(patchEmpty.body.ok).toBe(true);
+    expect(patchEmpty.body.data.address).toBe('');
+
+    const afterEmpty = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(afterEmpty.body.data.address).toBe('Newer Profile Street');
+
+    const patchNew = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ address: 'Brand New Street' });
+    expect(patchNew.body.ok).toBe(true);
+    expect(patchNew.body.data.address).toBe('Brand New Street');
+
+    const afterNew = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(afterNew.body.data.address).toBe('Brand New Street');
+  });
+
+  it('rejects non-string and calendar-rollover donationDate on create and patch', async () => {
+    const donorRes = await createDonor({
+      name: 'Date Donor',
+      email: 'date-donor@example.com'
+    });
+    const donorId = donorRes.body.data._id;
+
+    const created = await createManual({
+      donorId,
+      amount: 1000,
+      utrNumber: 'DATEVALID001',
+      donationDate: '2026-08-25T10:00:00Z'
+    });
+    expect(created.body.ok).toBe(true);
+    expect(created.body.data.donationDate).toBe('2026-08-25T10:00:00.000Z');
+
+    const invalidDates = [null, false, 1724800000000, '2024-02-31'];
+    for (const [index, donationDate] of invalidDates.entries()) {
+      const createRes = await createManual({
+        donorId,
+        amount: 1000,
+        utrNumber: `DATEBAD${index}`,
+        donationDate
+      });
+      expect(createRes.body.ok).toBe(false);
+      expect(createRes.body.err).toMatch(/donationDate/i);
+
+      const patchRes = await request()
+        .patch(`/v1/donations/${created.body.data._id}`)
+        .set('Cookie', cookie)
+        .send({ donationDate });
+      expect(patchRes.body.ok).toBe(false);
+      expect(patchRes.body.err).toMatch(/donationDate/i);
+    }
+
+    const unchanged = await request()
+      .get(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie);
+    expect(unchanged.body.ok).toBe(true);
+    expect(unchanged.body.data.donationDate).toBe('2026-08-25T10:00:00.000Z');
+  });
+
   it('does not expose a donations list endpoint', async () => {
     const res = await request().get('/v1/donations').set('Cookie', cookie);
     expect(res.status).toBe(404);
@@ -440,6 +546,16 @@ describe('manual donations API', () => {
     const syncPaymentId = donationsModel.RazorpaySyncDonation.schema.path('razorpayPaymentId');
     expect(webhookPaymentId.options.unique).toBeFalsy();
     expect(syncPaymentId.options.unique).toBeFalsy();
+  });
+
+  it('enforces a unique sparse index on manual_bank utrNumber', async () => {
+    const indexes = await donationsModel.Donation.collection.indexes();
+    const utrIndex = indexes.find((index) => index.key && index.key.utrNumber === 1);
+
+    expect(utrIndex).toBeDefined();
+    expect(utrIndex.unique).toBe(true);
+    expect(utrIndex.sparse).toBe(true);
+    expect(utrIndex.partialFilterExpression).toEqual({ source: 'manual_bank' });
   });
 
   it('fails with Mongo duplicate key 11000 when webhook and sync share the same razorpayPaymentId', async () => {

@@ -1,6 +1,9 @@
 const config = require('config');
+const mongoose = require('mongoose');
 
 const donationsModel = require('models/donations');
+const donorsModel = require('models/donors');
+const { FIELD_LIMITS } = require('utils/sanitize');
 const {
   startTestApp,
   stopTestApp,
@@ -86,6 +89,26 @@ describe('donors API', () => {
     expect(res.body.data.email.length).toBeLessThanOrEqual(254);
     expect(res.body.data.email).toMatch(/^[^\s@]+@example\.com$/);
     expect(res.body.data.email.includes('@')).toBe(true);
+  });
+
+  it('rejects an email whose domain leaves no room for a local part', async () => {
+    const email = `a@${'d'.repeat(FIELD_LIMITS.email)}.com`;
+    const res = await createDonor({
+      name: 'Oversized Domain',
+      email
+    });
+
+    expect(res.body.ok).toBe(false);
+    expect(res.body.err).toMatch(/email/i);
+    expect(res.body.data).toBeNull();
+
+    expect(mongoose.model('donors').schema.path('email').options.maxlength).toBe(FIELD_LIMITS.email);
+
+    await expect(
+      donorsModel.create({
+        donorData: { name: 'Bypass Sanitize', email }
+      })
+    ).rejects.toMatchObject({ name: 'ValidationError' });
   });
 
   it('requires name and email when creating a donor', async () => {
@@ -191,17 +214,19 @@ describe('donors API', () => {
       roleCode: 'donations-writer'
     });
 
-    await request().post('/v1/donations/manual').set('Cookie', donationCookie).send({
+    const first = await request().post('/v1/donations/manual').set('Cookie', donationCookie).send({
       donorId,
       amount: 5000,
       utrNumber: 'SBIN111111111',
       address: 'Chennai'
     });
-    await request().post('/v1/donations/manual').set('Cookie', donationCookie).send({
+    expect(first.body.ok).toBe(true);
+    const second = await request().post('/v1/donations/manual').set('Cookie', donationCookie).send({
       donorId,
       amount: 2500,
       utrNumber: 'SBIN222222222'
     });
+    expect(second.body.ok).toBe(true);
 
     const res = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
     expect(res.body.ok).toBe(true);
