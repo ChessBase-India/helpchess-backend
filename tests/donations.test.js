@@ -226,7 +226,7 @@ describe('manual donations API', () => {
     expect(notANumber.body.err).toMatch(/amount/i);
   });
 
-  it('rejects non-INR currencies on create and patch', async () => {
+  it('rejects non-INR currencies on manual create and patch', async () => {
     const created = await createManual({
       donor: { name: 'Inr Donor', email: 'inr-currency@example.com' },
       amount: 1000,
@@ -251,6 +251,83 @@ describe('manual donations API', () => {
       .send({ currency: 'USD', notes: 'try usd' });
     expect(patched.body.ok).toBe(false);
     expect(patched.body.err).toMatch(/currency/i);
+  });
+
+  it('stores cause as a free trimmed string on manual create and patch', async () => {
+    const created = await createManual({
+      donor: { name: 'Cause Donor', email: 'cause@example.com' },
+      amount: 1000,
+      utrNumber: 'CAUSEUTR001',
+      cause: 'Temple of Chess'
+    });
+    expect(created.body.ok).toBe(true);
+    expect(created.body.data.cause).toBe('Temple of Chess');
+
+    const custom = await createManual({
+      donor: { name: 'New Cause', email: 'new-cause@example.com' },
+      amount: 1000,
+      utrNumber: 'CAUSEUTR002',
+      cause: '  School Chess Program  '
+    });
+    expect(custom.body.ok).toBe(true);
+    expect(custom.body.data.cause).toBe('School Chess Program');
+
+    const patched = await request()
+      .patch(`/v1/donations/${created.body.data._id}`)
+      .set('Cookie', cookie)
+      .send({ cause: 'Board Grant 2026' });
+    expect(patched.body.ok).toBe(true);
+    expect(patched.body.data.cause).toBe('Board Grant 2026');
+  });
+
+  it('keeps the four dashboard cause suggestions in config without a schema enum', async () => {
+    expect(config.get('donations.causeSuggestions')).toEqual([
+      'QRv2 Payment',
+      'General Donation',
+      'Temple of Chess',
+      'Khelo Chess India'
+    ]);
+    expect(donationsModel.Donation.schema.path('cause').enumValues || []).toEqual([]);
+  });
+
+  it('leaves cause unset, defaults anonymous to false, and truncates donorMessage on manual create', async () => {
+    const longMessage = `Keep chess going ${'x'.repeat(2500)}`;
+    const res = await createManual({
+      donor: { name: 'Meta Donor', email: 'meta@example.com' },
+      amount: 2500,
+      utrNumber: 'METAUTR001',
+      notes: 'admin note',
+      donorMessage: longMessage
+    });
+
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data.cause).toBeUndefined();
+    expect(res.body.data.anonymous).toBe(false);
+    expect(res.body.data.notes).toBe('admin note');
+    expect(res.body.data.donorMessage).not.toBe(res.body.data.notes);
+    expect(res.body.data.donorMessage.length).toBeLessThanOrEqual(2000);
+    expect(res.body.data.donorMessage.startsWith('Keep chess going')).toBe(true);
+
+    const anonymous = await createManual({
+      donor: { name: 'Anon Donor', email: 'anon@example.com' },
+      amount: 500,
+      utrNumber: 'ANONUTR001',
+      anonymous: true,
+      donorMessage: 'shown on stream'
+    });
+    expect(anonymous.body.ok).toBe(true);
+    expect(anonymous.body.data.anonymous).toBe(true);
+    expect(anonymous.body.data.donorMessage).toBe('shown on stream');
+  });
+
+  it('defaults omitted manual_bank currency to INR', async () => {
+    const res = await createManual({
+      donor: { name: 'Default Inr', email: 'default-inr@example.com' },
+      amount: 1000,
+      utrNumber: 'DEFAULTINR001'
+    });
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data.currency).toBe('INR');
   });
 
   it('returns the created donation when donor address sync fails', async () => {
@@ -321,22 +398,43 @@ describe('manual donations API', () => {
     const webhook = await donationsModel.RazorpayWebhookDonation.create({
       donorId: donor._id,
       amount: 1500,
+      currency: ' usd ',
       razorpayPaymentId: 'pay_webhook_1',
       razorpayOrderId: 'order_1',
-      webhookEventId: 'evt_1'
+      webhookEventId: 'evt_1',
+      razorpayAccountId: 'acc_webhook_1',
+      cause: 'General Donation',
+      anonymous: true,
+      donorMessage: 'from the form'
     });
     const sync = await donationsModel.RazorpaySyncDonation.create({
       donorId: donor._id,
       amount: 1500,
+      currency: 'inr',
       razorpayPaymentId: 'pay_sync_1',
+      razorpayAccountId: 'acc_sync_1',
       syncedAt: new Date(),
       syncBatchId: donor._id
+    });
+    const webhookWithoutCurrency = await donationsModel.RazorpayWebhookDonation.create({
+      donorId: donor._id,
+      amount: 900,
+      razorpayPaymentId: 'pay_webhook_no_currency',
+      razorpayAccountId: 'acc_webhook_2'
     });
 
     expect(webhook.source).toBe('razorpay_webhook');
     expect(sync.source).toBe('razorpay_sync');
     expect(webhook.collection.collectionName).toBe('donations');
     expect(sync.collection.collectionName).toBe('donations');
+    expect(webhook.currency).toBe('USD');
+    expect(sync.currency).toBe('INR');
+    expect(webhookWithoutCurrency.currency).toBeUndefined();
+    expect(webhook.razorpayAccountId).toBe('acc_webhook_1');
+    expect(sync.razorpayAccountId).toBe('acc_sync_1');
+    expect(donationsModel.Donation.schema.path('currency').options.default).toBeUndefined();
+    expect(donationsModel.Donation.schema.path('cause').enumValues).toEqual([]);
+    expect(donationsModel.ManualBankDonation.schema.path('razorpayAccountId')).toBeUndefined();
   });
 
   it('enforces a collection-wide unique sparse index on razorpayPaymentId', async () => {

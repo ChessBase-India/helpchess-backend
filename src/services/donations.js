@@ -30,8 +30,19 @@ module.exports = {
   createManual: async ({ donationInput, createdBy }) => {
     let createdInlineDonorId;
     try {
-      const { donorId, donor, amount, currency, utrNumber, donationDate, address, notes } =
-        donationInput;
+      const {
+        donorId,
+        donor,
+        amount,
+        currency,
+        utrNumber,
+        donationDate,
+        address,
+        notes,
+        cause,
+        anonymous,
+        donorMessage
+      } = donationInput;
 
       if (!Number.isFinite(amount) || amount < 1) {
         return { ok: false, msg: 'Invalid/Missing amount', invalid: true };
@@ -39,8 +50,17 @@ module.exports = {
       if (!isAllowedCurrency(currency)) {
         return { ok: false, msg: 'Invalid currency', invalid: true };
       }
+      if (anonymous !== undefined && typeof anonymous !== 'boolean') {
+        return { ok: false, msg: 'Invalid anonymous', invalid: true };
+      }
 
-      const sanitizedDonation = sanitizeDonationFields({ utrNumber, address, notes });
+      const sanitizedDonation = sanitizeDonationFields({
+        utrNumber,
+        address,
+        notes,
+        donorMessage,
+        cause
+      });
       if (!sanitizedDonation.utrNumber) {
         return { ok: false, msg: 'Invalid/Missing utrNumber' };
       }
@@ -90,6 +110,15 @@ module.exports = {
       };
       if (donationDate) {
         donationData.donationDate = donationDate;
+      }
+      if (sanitizedDonation.cause !== undefined) {
+        donationData.cause = sanitizedDonation.cause;
+      }
+      if (anonymous !== undefined) {
+        donationData.anonymous = anonymous;
+      }
+      if (sanitizedDonation.donorMessage !== undefined) {
+        donationData.donorMessage = sanitizedDonation.donorMessage;
       }
 
       const donation = await donationsModel.createManualBank({ donationData });
@@ -184,6 +213,18 @@ module.exports = {
       }
       if (updateData.notes !== undefined) {
         patchPayload.notes = sanitized.notes;
+      }
+      if (updateData.cause !== undefined) {
+        patchPayload.cause = sanitized.cause;
+      }
+      if (updateData.anonymous !== undefined) {
+        if (typeof updateData.anonymous !== 'boolean') {
+          return { ok: false, msg: 'Invalid anonymous', invalid: true };
+        }
+        patchPayload.anonymous = updateData.anonymous;
+      }
+      if (updateData.donorMessage !== undefined) {
+        patchPayload.donorMessage = sanitized.donorMessage;
       }
 
       const donation = await donationsModel.patchManualBank({ id, updateData: patchPayload });

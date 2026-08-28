@@ -21,8 +21,19 @@ const parseFiniteAmount = (amount) => {
 module.exports = {
   createManual: async (req, res) => {
     try {
-      const { donorId, donor, amount, currency, utrNumber, donationDate, address, notes } =
-        req.body;
+      const {
+        donorId,
+        donor,
+        amount,
+        currency,
+        utrNumber,
+        donationDate,
+        address,
+        notes,
+        cause,
+        anonymous,
+        donorMessage
+      } = req.body;
 
       if (donorId !== undefined && donorId !== null && donorId !== '') {
         if (typeof donorId !== 'string' || !isValidObjectId(donorId)) {
@@ -69,6 +80,15 @@ module.exports = {
       if (notes !== undefined && typeof notes !== 'string') {
         return res.invalid({ msg: 'Invalid notes' });
       }
+      if (cause !== undefined && typeof cause !== 'string') {
+        return res.invalid({ msg: 'Invalid cause' });
+      }
+      if (anonymous !== undefined && typeof anonymous !== 'boolean') {
+        return res.invalid({ msg: 'Invalid anonymous' });
+      }
+      if (donorMessage !== undefined && typeof donorMessage !== 'string') {
+        return res.invalid({ msg: 'Invalid donorMessage' });
+      }
 
       const response = await donationsService.createManual({
         donationInput: {
@@ -79,7 +99,10 @@ module.exports = {
           utrNumber,
           donationDate,
           address,
-          notes
+          notes,
+          cause,
+          anonymous,
+          donorMessage
         },
         createdBy: req.userId
       });
@@ -117,7 +140,8 @@ module.exports = {
   patch: async (req, res) => {
     try {
       const { id } = req.params;
-      const { utrNumber, donationDate, address, notes, currency } = req.body;
+      const { utrNumber, donationDate, address, notes, currency, cause, anonymous, donorMessage } =
+        req.body;
 
       if (!id || !isValidObjectId(id)) {
         return res.invalid({ msg: 'Invalid/Missing donation id' });
@@ -153,6 +177,24 @@ module.exports = {
           return res.invalid({ msg: 'Invalid notes' });
         }
         updateData.notes = notes;
+      }
+      if (cause !== undefined) {
+        if (typeof cause !== 'string') {
+          return res.invalid({ msg: 'Invalid cause' });
+        }
+        updateData.cause = cause;
+      }
+      if (anonymous !== undefined) {
+        if (typeof anonymous !== 'boolean') {
+          return res.invalid({ msg: 'Invalid anonymous' });
+        }
+        updateData.anonymous = anonymous;
+      }
+      if (donorMessage !== undefined) {
+        if (typeof donorMessage !== 'string') {
+          return res.invalid({ msg: 'Invalid donorMessage' });
+        }
+        updateData.donorMessage = donorMessage;
       }
 
       if (Object.keys(updateData).length === 0) {

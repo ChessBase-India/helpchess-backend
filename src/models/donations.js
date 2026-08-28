@@ -6,13 +6,16 @@ const baseDonationSchema = new mongoose.Schema(
   {
     donorId: { type: mongoose.Schema.Types.ObjectId, ref: 'donors', required: true, index: true },
     amount: { type: Number, required: true, min: 1 },
-    currency: { type: String, default: 'INR', uppercase: true },
+    currency: { type: String, uppercase: true, trim: true },
     donationDate: { type: Date, default: Date.now, index: true },
     status: {
       type: String,
       enum: ['captured', 'refunded', 'cancelled'],
       default: 'captured'
     },
+    cause: { type: String, trim: true, index: true },
+    anonymous: { type: Boolean, default: false },
+    donorMessage: { type: String, trim: true },
     receiptNumber: { type: String, trim: true, index: true, unique: true, sparse: true },
     receiptSentAt: { type: Date },
     certificateSentAt: { type: Date },
@@ -47,6 +50,7 @@ const razorpayWebhookSchema = new mongoose.Schema({
   razorpayOrderId: { type: String, trim: true },
   razorpayFee: { type: Number },
   razorpayTax: { type: Number },
+  razorpayAccountId: { type: String, trim: true },
   webhookEventId: { type: String, trim: true }
 });
 
@@ -57,6 +61,7 @@ const razorpaySyncSchema = new mongoose.Schema({
   razorpayOrderId: { type: String, trim: true },
   razorpayFee: { type: Number },
   razorpayTax: { type: Number },
+  razorpayAccountId: { type: String, trim: true },
   syncedAt: { type: Date, default: Date.now },
   syncBatchId: { type: mongoose.Schema.Types.ObjectId }
 });
@@ -87,26 +92,31 @@ module.exports = {
     Donation.findById(donation._id).populate(DONOR_POPULATE).lean(),
 
   aggregateByDonorId: async ({ donorId }) => {
-    const [summary] = await Donation.aggregate([
+    const groups = await Donation.aggregate([
       {
         $match: {
           donorId: toObjectId(donorId),
-          status: 'captured',
-          currency: 'INR'
+          status: 'captured'
         }
       },
       {
         $group: {
-          _id: '$donorId',
-          totalDonationsCount: { $sum: 1 },
-          totalDonatedAmount: { $sum: '$amount' }
+          _id: '$currency',
+          amount: { $sum: '$amount' },
+          count: { $sum: 1 }
         }
-      }
+      },
+      {
+        $project: {
+          _id: 0,
+          currency: '$_id',
+          amount: 1,
+          count: 1
+        }
+      },
+      { $sort: { currency: 1 } }
     ]);
 
-    return {
-      totalDonationsCount: summary ? summary.totalDonationsCount : 0,
-      totalDonatedAmount: summary ? summary.totalDonatedAmount : 0
-    };
+    return groups;
   }
 };

@@ -5,6 +5,8 @@ const FIELD_LIMITS = {
   pan: 20,
   address: 500,
   notes: 2000,
+  donorMessage: 2000,
+  cause: 200,
   utrNumber: 64
 };
 
@@ -92,6 +94,14 @@ const sanitizeDonationFields = (input = {}) => {
   }
   if (input.notes !== undefined) {
     donationData.notes = emptyToUndefined(sanitizeString(input.notes, FIELD_LIMITS.notes));
+  }
+  if (input.donorMessage !== undefined) {
+    donationData.donorMessage = emptyToUndefined(
+      sanitizeString(input.donorMessage, FIELD_LIMITS.donorMessage)
+    );
+  }
+  if (input.cause !== undefined) {
+    donationData.cause = emptyToUndefined(sanitizeString(input.cause, FIELD_LIMITS.cause));
   }
 
   return donationData;

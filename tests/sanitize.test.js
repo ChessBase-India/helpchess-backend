@@ -2,6 +2,7 @@ const {
   FIELD_LIMITS,
   sanitizeString,
   sanitizeDonorFields,
+  sanitizeDonationFields,
   sanitizeEmail
 } = require('utils/sanitize');
 
@@ -30,5 +31,25 @@ describe('sanitize', () => {
 
   it('trims after slicing as specified', () => {
     expect(sanitizeString(`  hello${' '.repeat(10)}`, 7)).toBe('hello');
+  });
+
+  it('auto-truncates donorMessage without rejecting it', () => {
+    const donorMessage = `hello ${'x'.repeat(FIELD_LIMITS.donorMessage + 80)}`;
+    const sanitized = sanitizeDonationFields({
+      donorMessage,
+      notes: 'admin only'
+    });
+
+    expect(sanitized.donorMessage.length).toBeLessThanOrEqual(FIELD_LIMITS.donorMessage);
+    expect(sanitized.notes).toBe('admin only');
+    expect(sanitized.donorMessage).not.toBe(sanitized.notes);
+  });
+
+  it('auto-truncates cause without rejecting unknown values', () => {
+    const cause = `School Chess ${'x'.repeat(FIELD_LIMITS.cause + 40)}`;
+    const sanitized = sanitizeDonationFields({ cause });
+
+    expect(sanitized.cause.length).toBeLessThanOrEqual(FIELD_LIMITS.cause);
+    expect(sanitized.cause.startsWith('School Chess')).toBe(true);
   });
 });

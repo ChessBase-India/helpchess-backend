@@ -38,6 +38,9 @@
       "donationsWrite": "donations.write"
     }
   },
+  "donations": {
+    "causeSuggestions": ["QRv2 Payment", "General Donation", "Temple of Chess", "Khelo Chess India"]
+  },
   "exampleQueue": {
     "url": "",
     "region": ""

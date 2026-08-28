@@ -206,16 +206,13 @@ describe('donors API', () => {
     const res = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
     expect(res.body.ok).toBe(true);
     expect(res.body.data.name).toBe('Gukesh D');
-    expect(res.body.data.donationSummary).toEqual({
-      totalDonationsCount: 2,
-      totalDonatedAmount: 7500
-    });
+    expect(res.body.data.donationSummary).toEqual([{ currency: 'INR', amount: 7500, count: 2 }]);
   });
 
-  it('aggregates donor totals from captured INR donations only', async () => {
+  it('groups captured donation totals by currency without mixing units', async () => {
     const created = await createDonor({
-      name: 'Inr Only',
-      email: 'inr-only@example.com'
+      name: 'Multi Currency',
+      email: 'multi-currency@example.com'
     });
     const donorId = created.body.data._id;
 
@@ -243,10 +240,13 @@ describe('donors API', () => {
     });
 
     const res = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
-    expect(res.body.data.donationSummary).toEqual({
-      totalDonationsCount: 1,
-      totalDonatedAmount: 100
-    });
+    expect(res.body.data.donationSummary).toEqual([
+      { currency: 'INR', amount: 100, count: 1 },
+      { currency: 'USD', amount: 50, count: 1 }
+    ]);
+    expect(res.body.data.donationSummary).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ amount: 150 })])
+    );
   });
 
   it('updates donor profile fields', async () => {
