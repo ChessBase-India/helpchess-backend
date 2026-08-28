@@ -6,8 +6,33 @@ const authService = require('services/auth');
 const { parseCurrencyCode } = require('utils/sanitize');
 
 const isValidDate = (value) => {
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime());
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const ymd = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!ymd) {
+    return true;
+  }
+
+  const year = Number(ymd[1]);
+  const month = Number(ymd[2]);
+  const day = Number(ymd[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    calendarDate.getUTCFullYear() === year &&
+    calendarDate.getUTCMonth() === month - 1 &&
+    calendarDate.getUTCDate() === day
+  );
 };
 
 const parseFiniteAmount = (amount) => {

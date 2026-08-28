@@ -4,12 +4,9 @@ const donationsModel = require('models/donations');
 const { sanitizeDonorFields } = require('utils/sanitize');
 const authService = require('services/auth');
 
-const resolveEmail = ({ original, sanitized }) => {
+const resolveEmail = (sanitized) => {
   if (sanitized && authService.isValidEmail(sanitized)) {
     return sanitized;
-  }
-  if (original && typeof original === 'string' && authService.isValidEmail(original.trim())) {
-    return original.trim();
   }
   return null;
 };
@@ -50,7 +47,7 @@ module.exports = {
         return { ok: false, msg: 'Invalid/Missing name' };
       }
 
-      const email = resolveEmail({ original: donorData.email, sanitized: sanitized.email });
+      const email = resolveEmail(sanitized.email);
       if (!email) {
         return { ok: false, msg: 'Invalid/Missing email' };
       }
@@ -82,7 +79,7 @@ module.exports = {
         return { ok: false, msg: 'Invalid name' };
       }
       if (updateData.email !== undefined) {
-        const email = resolveEmail({ original: updateData.email, sanitized: sanitized.email });
+        const email = resolveEmail(sanitized.email);
         if (!email) {
           return { ok: false, msg: 'Invalid email' };
         }

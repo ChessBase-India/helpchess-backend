@@ -52,7 +52,7 @@ const sanitizeEmail = (value) => {
   const local = trimmed.slice(0, at);
   const maxLocal = FIELD_LIMITS.email - domain.length;
   if (maxLocal < 1) {
-    return trimmed;
+    return undefined;
   }
 
   return `${local.slice(0, maxLocal)}${domain}`;

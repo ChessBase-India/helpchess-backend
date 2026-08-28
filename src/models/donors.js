@@ -1,11 +1,20 @@
 const mongoose = require('mongoose');
 
+const { FIELD_LIMITS } = require('utils/sanitize');
+
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const donorSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, lowercase: true, trim: true, index: true },
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+      maxlength: FIELD_LIMITS.email
+    },
     phone: { type: String, trim: true, index: true },
     pan: { type: String, uppercase: true, trim: true, index: true },
     address: { type: String, trim: true },
