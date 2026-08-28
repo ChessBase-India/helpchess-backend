@@ -374,11 +374,11 @@ describe('manual donations API', () => {
     expect(patched.body.data.utrNumber).toBe('PATCHUTR0002');
   });
 
-  it('overwrites donor.address when the donation snapshot is non-empty', async () => {
+  it('does not copy an unchanged historical snapshot onto a newer donor profile address', async () => {
     const donorRes = await createDonor({
       name: 'Address History',
       email: 'addr-history@example.com',
-      address: 'Original Profile Street'
+      address: 'Donation Snapshot Street'
     });
     const donorId = donorRes.body.data._id;
 
@@ -389,6 +389,7 @@ describe('manual donations API', () => {
       address: 'Donation Snapshot Street'
     });
     expect(created.body.ok).toBe(true);
+    expect(created.body.data.address).toBe('Donation Snapshot Street');
 
     const donorPatched = await request()
       .patch(`/v1/donors/${donorId}`)
@@ -397,6 +398,9 @@ describe('manual donations API', () => {
     expect(donorPatched.body.ok).toBe(true);
     expect(donorPatched.body.data.address).toBe('Newer Profile Street');
 
+    const donorBefore = await donorsModel.getById({ id: donorId });
+    expect(donorBefore.address).toBe('Newer Profile Street');
+
     const patchWithSnapshot = await request()
       .patch(`/v1/donations/${created.body.data._id}`)
       .set('Cookie', cookie)
@@ -404,8 +408,9 @@ describe('manual donations API', () => {
     expect(patchWithSnapshot.body.ok).toBe(true);
     expect(patchWithSnapshot.body.data.address).toBe('Donation Snapshot Street');
 
-    const donorAfterNonEmpty = await donorsModel.getById({ id: donorId });
-    expect(donorAfterNonEmpty.address).toBe('Donation Snapshot Street');
+    const donorAfter = await donorsModel.getById({ id: donorId });
+    expect(donorAfter.address).toBe('Newer Profile Street');
+    expect(donorAfter).toEqual(donorBefore);
   });
 
   it('leaves the donor document unchanged when the donation snapshot address is empty', async () => {

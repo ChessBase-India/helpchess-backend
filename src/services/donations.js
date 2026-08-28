@@ -240,7 +240,12 @@ module.exports = {
         return { ok: false, msg: 'Donation not found or unable to update.' };
       }
 
-      if (sanitized.address) {
+      if (
+        updateData.address !== undefined &&
+        sanitized.address &&
+        sanitized.address !== existing.address &&
+        sanitized.address !== existing.donorId?.address
+      ) {
         const donorId = existing.donorId?._id || existing.donorId;
         try {
           await donorsModel.patch({ id: donorId, updateData: { address: sanitized.address } });
