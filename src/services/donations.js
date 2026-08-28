@@ -2,18 +2,17 @@ const { error } = require('utils/logger');
 const donorsModel = require('models/donors');
 const donationsModel = require('models/donations');
 const donorsService = require('services/donors');
-const { sanitizeDonationFields, sanitizeString, FIELD_LIMITS } = require('utils/sanitize');
+const {
+  sanitizeDonationFields,
+  sanitizeString,
+  FIELD_LIMITS,
+  parseCurrencyCode
+} = require('utils/sanitize');
 
 const isDuplicateUtr = (e) =>
   e &&
   e.code === 11000 &&
   (e.keyPattern?.utrNumber || (e.message && e.message.includes('utrNumber')));
-
-const isAllowedCurrency = (value) =>
-  value === undefined ||
-  value === null ||
-  value === '' ||
-  (typeof value === 'string' && value.trim().toUpperCase() === 'INR');
 
 const cleanupInlineDonor = async (donorId) => {
   if (!donorId) {
@@ -47,7 +46,8 @@ module.exports = {
       if (!Number.isFinite(amount) || amount < 1) {
         return { ok: false, msg: 'Invalid/Missing amount', invalid: true };
       }
-      if (!isAllowedCurrency(currency)) {
+      const parsedCurrency = parseCurrencyCode(currency);
+      if (parsedCurrency === null) {
         return { ok: false, msg: 'Invalid currency', invalid: true };
       }
       if (anonymous !== undefined && typeof anonymous !== 'boolean') {
@@ -102,7 +102,7 @@ module.exports = {
       const donationData = {
         donorId: resolvedDonor._id,
         amount,
-        currency: 'INR',
+        currency: parsedCurrency || 'INR',
         utrNumber: sanitizedDonation.utrNumber,
         createdBy,
         address: snapshotAddress,
@@ -207,6 +207,13 @@ module.exports = {
 
       if (updateData.donationDate !== undefined) {
         patchPayload.donationDate = updateData.donationDate;
+      }
+      if (updateData.currency !== undefined) {
+        const parsedCurrency = parseCurrencyCode(updateData.currency);
+        if (!parsedCurrency) {
+          return { ok: false, msg: 'Invalid currency', invalid: true };
+        }
+        patchPayload.currency = parsedCurrency;
       }
       if (updateData.address !== undefined) {
         patchPayload.address = sanitized.address;

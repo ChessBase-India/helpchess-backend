@@ -3,13 +3,12 @@ const { isValidObjectId } = require('mongoose');
 const { error } = require('utils/logger');
 const donationsService = require('services/donations');
 const authService = require('services/auth');
+const { parseCurrencyCode } = require('utils/sanitize');
 
 const isValidDate = (value) => {
   const date = new Date(value);
   return !Number.isNaN(date.getTime());
 };
-
-const isInr = (value) => typeof value === 'string' && value.trim().toUpperCase() === 'INR';
 
 const parseFiniteAmount = (amount) => {
   if (typeof amount !== 'number' && typeof amount !== 'string') {
@@ -66,10 +65,9 @@ module.exports = {
       if (!utrNumber || typeof utrNumber !== 'string' || utrNumber.trim().length === 0) {
         return res.invalid({ msg: 'Invalid/Missing utrNumber' });
       }
-      if (currency !== undefined && currency !== null && currency !== '') {
-        if (!isInr(currency)) {
-          return res.invalid({ msg: 'Invalid currency' });
-        }
+      const parsedCurrency = parseCurrencyCode(currency);
+      if (parsedCurrency === null) {
+        return res.invalid({ msg: 'Invalid currency' });
       }
       if (donationDate !== undefined && !isValidDate(donationDate)) {
         return res.invalid({ msg: 'Invalid donationDate' });
@@ -95,7 +93,7 @@ module.exports = {
           donorId: donorId || undefined,
           donor,
           amount: parsedAmount,
-          currency: currency ? 'INR' : undefined,
+          currency: parsedCurrency,
           utrNumber,
           donationDate,
           address,
@@ -147,13 +145,15 @@ module.exports = {
         return res.invalid({ msg: 'Invalid/Missing donation id' });
       }
 
-      if (currency !== undefined && currency !== null && currency !== '') {
-        if (!isInr(currency)) {
-          return res.invalid({ msg: 'Invalid currency' });
-        }
+      const parsedCurrency = parseCurrencyCode(currency);
+      if (parsedCurrency === null) {
+        return res.invalid({ msg: 'Invalid currency' });
       }
 
       const updateData = {};
+      if (parsedCurrency) {
+        updateData.currency = parsedCurrency;
+      }
       if (utrNumber !== undefined) {
         if (typeof utrNumber !== 'string' || utrNumber.trim().length === 0) {
           return res.invalid({ msg: 'Invalid utrNumber' });

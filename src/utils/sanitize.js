@@ -107,11 +107,29 @@ const sanitizeDonationFields = (input = {}) => {
   return donationData;
 };
 
+const parseCurrencyCode = (value) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return undefined;
+  }
+  if (!/^[A-Za-z]{3}$/.test(trimmed)) {
+    return null;
+  }
+  return trimmed.toUpperCase();
+};
+
 module.exports = {
   FIELD_LIMITS,
   sanitizeString,
   sanitizeEmail,
   emptyToUndefined,
   sanitizeDonorFields,
-  sanitizeDonationFields
+  sanitizeDonationFields,
+  parseCurrencyCode
 };

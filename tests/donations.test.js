@@ -226,31 +226,30 @@ describe('manual donations API', () => {
     expect(notANumber.body.err).toMatch(/amount/i);
   });
 
-  it('rejects non-INR currencies on manual create and patch', async () => {
-    const created = await createManual({
-      donor: { name: 'Inr Donor', email: 'inr-currency@example.com' },
+  it('stores explicit USD on manual create and patch and defaults omitted currency to INR', async () => {
+    const omitted = await createManual({
+      donor: { name: 'Default Inr', email: 'default-inr@example.com' },
       amount: 1000,
-      currency: 'INR',
-      utrNumber: 'INRCURR001'
+      utrNumber: 'DEFAULTINR001'
     });
-    expect(created.body.ok).toBe(true);
-    expect(created.body.data.currency).toBe('INR');
+    expect(omitted.body.ok).toBe(true);
+    expect(omitted.body.data.currency).toBe('INR');
 
-    const usd = await createManual({
+    const created = await createManual({
       donor: { name: 'Usd Donor', email: 'usd-currency@example.com' },
       amount: 1000,
-      currency: 'USD',
+      currency: 'usd',
       utrNumber: 'USDCURR001'
     });
-    expect(usd.body.ok).toBe(false);
-    expect(usd.body.err).toMatch(/currency/i);
+    expect(created.body.ok).toBe(true);
+    expect(created.body.data.currency).toBe('USD');
 
     const patched = await request()
       .patch(`/v1/donations/${created.body.data._id}`)
       .set('Cookie', cookie)
-      .send({ currency: 'USD', notes: 'try usd' });
-    expect(patched.body.ok).toBe(false);
-    expect(patched.body.err).toMatch(/currency/i);
+      .send({ currency: 'eur' });
+    expect(patched.body.ok).toBe(true);
+    expect(patched.body.data.currency).toBe('EUR');
   });
 
   it('stores cause as a free trimmed string on manual create and patch', async () => {
@@ -318,16 +317,6 @@ describe('manual donations API', () => {
     expect(anonymous.body.ok).toBe(true);
     expect(anonymous.body.data.anonymous).toBe(true);
     expect(anonymous.body.data.donorMessage).toBe('shown on stream');
-  });
-
-  it('defaults omitted manual_bank currency to INR', async () => {
-    const res = await createManual({
-      donor: { name: 'Default Inr', email: 'default-inr@example.com' },
-      amount: 1000,
-      utrNumber: 'DEFAULTINR001'
-    });
-    expect(res.body.ok).toBe(true);
-    expect(res.body.data.currency).toBe('INR');
   });
 
   it('returns the created donation when donor address sync fails', async () => {
