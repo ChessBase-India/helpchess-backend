@@ -374,11 +374,11 @@ describe('manual donations API', () => {
     expect(patched.body.data.utrNumber).toBe('PATCHUTR0002');
   });
 
-  it('does not revert a newer donor profile address when patching a donation snapshot', async () => {
+  it('overwrites donor.address when the donation snapshot is non-empty', async () => {
     const donorRes = await createDonor({
       name: 'Address History',
       email: 'addr-history@example.com',
-      address: 'Donation Snapshot Street'
+      address: 'Original Profile Street'
     });
     const donorId = donorRes.body.data._id;
 
@@ -389,7 +389,6 @@ describe('manual donations API', () => {
       address: 'Donation Snapshot Street'
     });
     expect(created.body.ok).toBe(true);
-    expect(created.body.data.address).toBe('Donation Snapshot Street');
 
     const donorPatched = await request()
       .patch(`/v1/donors/${donorId}`)
@@ -401,21 +400,32 @@ describe('manual donations API', () => {
     const patchWithSnapshot = await request()
       .patch(`/v1/donations/${created.body.data._id}`)
       .set('Cookie', cookie)
-      .send({ address: 'Donation Snapshot Street', notes: 'keep snapshot' });
+      .send({ address: 'Donation Snapshot Street' });
     expect(patchWithSnapshot.body.ok).toBe(true);
     expect(patchWithSnapshot.body.data.address).toBe('Donation Snapshot Street');
 
-    const afterSnapshotPatch = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
-    expect(afterSnapshotPatch.body.data.address).toBe('Newer Profile Street');
+    const donorAfterNonEmpty = await donorsModel.getById({ id: donorId });
+    expect(donorAfterNonEmpty.address).toBe('Donation Snapshot Street');
+  });
 
-    const patchOmitAddress = await request()
-      .patch(`/v1/donations/${created.body.data._id}`)
-      .set('Cookie', cookie)
-      .send({ notes: 'omit address' });
-    expect(patchOmitAddress.body.ok).toBe(true);
+  it('leaves the donor document unchanged when the donation snapshot address is empty', async () => {
+    const donorRes = await createDonor({
+      name: 'Empty Snapshot',
+      email: 'empty-snap@example.com',
+      address: 'Keep This Street',
+      notes: 'profile note'
+    });
+    const donorId = donorRes.body.data._id;
 
-    const afterOmit = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
-    expect(afterOmit.body.data.address).toBe('Newer Profile Street');
+    const created = await createManual({
+      donorId,
+      amount: 1000,
+      utrNumber: 'ADDREMPTY001'
+    });
+    expect(created.body.ok).toBe(true);
+
+    const donorBefore = await donorsModel.getById({ id: donorId });
+    expect(donorBefore.address).toBe('Keep This Street');
 
     const patchEmpty = await request()
       .patch(`/v1/donations/${created.body.data._id}`)
@@ -424,18 +434,18 @@ describe('manual donations API', () => {
     expect(patchEmpty.body.ok).toBe(true);
     expect(patchEmpty.body.data.address).toBe('');
 
-    const afterEmpty = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
-    expect(afterEmpty.body.data.address).toBe('Newer Profile Street');
+    const donorAfterEmpty = await donorsModel.getById({ id: donorId });
+    expect(donorAfterEmpty).toEqual(donorBefore);
 
-    const patchNew = await request()
+    const patchWhitespace = await request()
       .patch(`/v1/donations/${created.body.data._id}`)
       .set('Cookie', cookie)
-      .send({ address: 'Brand New Street' });
-    expect(patchNew.body.ok).toBe(true);
-    expect(patchNew.body.data.address).toBe('Brand New Street');
+      .send({ address: '   ' });
+    expect(patchWhitespace.body.ok).toBe(true);
+    expect(patchWhitespace.body.data.address).toBe('');
 
-    const afterNew = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
-    expect(afterNew.body.data.address).toBe('Brand New Street');
+    const donorAfterWhitespace = await donorsModel.getById({ id: donorId });
+    expect(donorAfterWhitespace).toEqual(donorBefore);
   });
 
   it('rejects non-string and calendar-rollover donationDate on create and patch', async () => {

@@ -217,7 +217,6 @@ module.exports = {
       }
       if (updateData.address !== undefined) {
         // Persist the caller's snapshot, including an explicit empty string.
-        // Empty/older snapshots must not be copied onto donor.address.
         patchPayload.address = sanitized.address || '';
       }
       if (updateData.notes !== undefined) {
@@ -241,12 +240,7 @@ module.exports = {
         return { ok: false, msg: 'Donation not found or unable to update.' };
       }
 
-      if (
-        updateData.address !== undefined &&
-        sanitized.address &&
-        sanitized.address !== existing.address &&
-        sanitized.address !== existing.donorId?.address
-      ) {
+      if (sanitized.address) {
         const donorId = existing.donorId?._id || existing.donorId;
         try {
           await donorsModel.patch({ id: donorId, updateData: { address: sanitized.address } });
