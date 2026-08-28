@@ -102,7 +102,9 @@ describe('donors API', () => {
     expect(res.body.err).toMatch(/email/i);
     expect(res.body.data).toBeNull();
 
-    expect(mongoose.model('donors').schema.path('email').options.maxlength).toBe(FIELD_LIMITS.email);
+    expect(mongoose.model('donors').schema.path('email').options.maxlength).toBe(
+      FIELD_LIMITS.email
+    );
 
     await expect(
       donorsModel.create({

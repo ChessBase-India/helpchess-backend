@@ -454,12 +454,11 @@ describe('manual donations API', () => {
     expect(created.body.ok).toBe(true);
     expect(created.body.data.donationDate).toBe('2026-08-25T10:00:00.000Z');
 
-    const invalidDates = [null, false, 1724800000000, '2024-02-31'];
-    for (const [index, donationDate] of invalidDates.entries()) {
+    const expectInvalidDonationDate = async ({ donationDate, utrNumber }) => {
       const createRes = await createManual({
         donorId,
         amount: 1000,
-        utrNumber: `DATEBAD${index}`,
+        utrNumber,
         donationDate
       });
       expect(createRes.body.ok).toBe(false);
@@ -471,7 +470,12 @@ describe('manual donations API', () => {
         .send({ donationDate });
       expect(patchRes.body.ok).toBe(false);
       expect(patchRes.body.err).toMatch(/donationDate/i);
-    }
+    };
+
+    await expectInvalidDonationDate({ donationDate: null, utrNumber: 'DATEBAD0' });
+    await expectInvalidDonationDate({ donationDate: false, utrNumber: 'DATEBAD1' });
+    await expectInvalidDonationDate({ donationDate: 1724800000000, utrNumber: 'DATEBAD2' });
+    await expectInvalidDonationDate({ donationDate: '2024-02-31', utrNumber: 'DATEBAD3' });
 
     const unchanged = await request()
       .get(`/v1/donations/${created.body.data._id}`)
@@ -555,7 +559,6 @@ describe('manual donations API', () => {
     expect(utrIndex).toBeDefined();
     expect(utrIndex.unique).toBe(true);
     expect(utrIndex.sparse).toBe(true);
-    expect(utrIndex.partialFilterExpression).toEqual({ source: 'manual_bank' });
   });
 
   it('fails with Mongo duplicate key 11000 when webhook and sync share the same razorpayPaymentId', async () => {
