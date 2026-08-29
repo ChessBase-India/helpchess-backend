@@ -58,7 +58,7 @@ const sanitizeEmail = (value) => {
   return `${local.slice(0, maxLocal)}${domain}`;
 };
 
-const sanitizeDonorFields = (input = {}) => {
+const sanitizeDonorFields = (input = {}, { allowEmpty = false } = {}) => {
   const donorData = {};
 
   if (input.name !== undefined) {
@@ -68,40 +68,46 @@ const sanitizeDonorFields = (input = {}) => {
     donorData.email = sanitizeEmail(input.email);
   }
   if (input.phone !== undefined) {
-    donorData.phone = emptyToUndefined(sanitizeString(input.phone, FIELD_LIMITS.phone));
+    const phone = sanitizeString(input.phone, FIELD_LIMITS.phone);
+    donorData.phone = allowEmpty ? phone : emptyToUndefined(phone);
   }
   if (input.pan !== undefined) {
-    donorData.pan = emptyToUndefined(sanitizeString(input.pan, FIELD_LIMITS.pan));
+    const pan = sanitizeString(input.pan, FIELD_LIMITS.pan);
+    donorData.pan = allowEmpty ? pan : emptyToUndefined(pan);
   }
   if (input.address !== undefined) {
-    donorData.address = emptyToUndefined(sanitizeString(input.address, FIELD_LIMITS.address));
+    const address = sanitizeString(input.address, FIELD_LIMITS.address);
+    donorData.address = allowEmpty ? address : emptyToUndefined(address);
   }
   if (input.notes !== undefined) {
-    donorData.notes = emptyToUndefined(sanitizeString(input.notes, FIELD_LIMITS.notes));
+    const notes = sanitizeString(input.notes, FIELD_LIMITS.notes);
+    donorData.notes = allowEmpty ? notes : emptyToUndefined(notes);
   }
 
   return donorData;
 };
 
-const sanitizeDonationFields = (input = {}) => {
+const sanitizeDonationFields = (input = {}, { allowEmpty = false } = {}) => {
   const donationData = {};
 
   if (input.utrNumber !== undefined) {
     donationData.utrNumber = sanitizeString(input.utrNumber, FIELD_LIMITS.utrNumber);
   }
   if (input.address !== undefined) {
-    donationData.address = emptyToUndefined(sanitizeString(input.address, FIELD_LIMITS.address));
+    const address = sanitizeString(input.address, FIELD_LIMITS.address);
+    donationData.address = allowEmpty ? address : emptyToUndefined(address);
   }
   if (input.notes !== undefined) {
-    donationData.notes = emptyToUndefined(sanitizeString(input.notes, FIELD_LIMITS.notes));
+    const notes = sanitizeString(input.notes, FIELD_LIMITS.notes);
+    donationData.notes = allowEmpty ? notes : emptyToUndefined(notes);
   }
   if (input.donorMessage !== undefined) {
-    donationData.donorMessage = emptyToUndefined(
-      sanitizeString(input.donorMessage, FIELD_LIMITS.donorMessage)
-    );
+    const donorMessage = sanitizeString(input.donorMessage, FIELD_LIMITS.donorMessage);
+    donationData.donorMessage = allowEmpty ? donorMessage : emptyToUndefined(donorMessage);
   }
   if (input.cause !== undefined) {
-    donationData.cause = emptyToUndefined(sanitizeString(input.cause, FIELD_LIMITS.cause));
+    const cause = sanitizeString(input.cause, FIELD_LIMITS.cause);
+    donationData.cause = allowEmpty ? cause : emptyToUndefined(cause);
   }
 
   return donationData;

@@ -185,7 +185,7 @@ module.exports = {
         return { ok: false, msg: 'Only manual bank donations can be updated', invalid: true };
       }
 
-      const sanitized = sanitizeDonationFields(updateData);
+      const sanitized = sanitizeDonationFields(updateData, { allowEmpty: true });
       const patchPayload = {};
 
       if (updateData.utrNumber !== undefined) {

@@ -293,6 +293,36 @@ describe('donors API', () => {
     expect(res.body.data.email).toBe('old@example.com');
   });
 
+  it('allows clearing optional donor fields with empty strings on patch', async () => {
+    const created = await createDonor({
+      name: 'Full Profile',
+      email: 'full@example.com',
+      phone: '9999999999',
+      pan: 'ABCDE1234F',
+      address: '123 Main St',
+      notes: 'Initial notes'
+    });
+    const donorId = created.body.data._id;
+
+    const res = await request()
+      .patch(`/v1/donors/${donorId}`)
+      .set('Cookie', cookie)
+      .send({ phone: '', pan: '', address: '', notes: '' });
+
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data.phone).toBe('');
+    expect(res.body.data.pan).toBe('');
+    expect(res.body.data.address).toBe('');
+    expect(res.body.data.notes).toBe('');
+
+    const fetched = await request().get(`/v1/donors/${donorId}`).set('Cookie', cookie);
+    expect(fetched.body.ok).toBe(true);
+    expect(fetched.body.data.phone).toBe('');
+    expect(fetched.body.data.pan).toBe('');
+    expect(fetched.body.data.address).toBe('');
+    expect(fetched.body.data.notes).toBe('');
+  });
+
   it('returns invalid for unknown donor ids', async () => {
     const res = await request().get('/v1/donors/64ce172dc4eff7ec4ff20e6e').set('Cookie', cookie);
     expect(res.body.ok).toBe(false);

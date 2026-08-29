@@ -11,7 +11,8 @@
     "prepare": "husky",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "seed": "node scripts/seedRoles.js"
+    "seed": "node scripts/seedRoles.js",
+    "start:db": "node scripts/startLocalDb.js"
   },
   "author": "",
   "license": "ISC",

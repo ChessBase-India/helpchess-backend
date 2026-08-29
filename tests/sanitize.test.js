@@ -60,4 +60,24 @@ describe('sanitize', () => {
     expect(sanitized.cause.length).toBeLessThanOrEqual(FIELD_LIMITS.cause);
     expect(sanitized.cause.startsWith('School Chess')).toBe(true);
   });
+
+  it('preserves empty strings when allowEmpty is true for patch operations', () => {
+    const donorSanitized = sanitizeDonorFields(
+      { phone: '', pan: '', address: '', notes: '' },
+      { allowEmpty: true }
+    );
+    expect(donorSanitized.phone).toBe('');
+    expect(donorSanitized.pan).toBe('');
+    expect(donorSanitized.address).toBe('');
+    expect(donorSanitized.notes).toBe('');
+
+    const donationSanitized = sanitizeDonationFields(
+      { address: '', notes: '', donorMessage: '', cause: '' },
+      { allowEmpty: true }
+    );
+    expect(donationSanitized.address).toBe('');
+    expect(donationSanitized.notes).toBe('');
+    expect(donationSanitized.donorMessage).toBe('');
+    expect(donationSanitized.cause).toBe('');
+  });
 });

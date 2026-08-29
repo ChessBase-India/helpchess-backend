@@ -74,7 +74,7 @@ module.exports = {
         return { ok: false, msg: 'Donor not found.' };
       }
 
-      const sanitized = sanitizeDonorFields(updateData);
+      const sanitized = sanitizeDonorFields(updateData, { allowEmpty: true });
       if (sanitized.name !== undefined && !sanitized.name) {
         return { ok: false, msg: 'Invalid name' };
       }
